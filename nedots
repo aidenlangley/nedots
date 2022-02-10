@@ -118,28 +118,20 @@ def install_flatpaks(remote: str, pkgs: list[str]) -> None:
 
 def add_dotfile_changes(files: list[Path], dotfile_dirs: list[Path]) -> None:
     for path in files:
-        source_dir = path.parent
-        dest_dir = f'{PROG_DIR}{source_dir}'
+        parent_dir = path.parent
+        dest_dir = f'{PROG_DIR}{parent_dir}'
         os.makedirs(dest_dir, exist_ok=True)
-        os.system(f'cp -v {path} {PROG_DIR}{path}')
+        os.system(f'cp {path} {PROG_DIR}{parent_dir}')
 
     for path in dotfile_dirs:
-        dest_dir = f'{PROG_DIR}{path}'
+        dest_dir = f'{PROG_DIR}/{path}'
         os.makedirs(dest_dir, exist_ok=True)
-        os.system(f'cp -vr {path} {PROG_DIR}{path}')
+        os.system(f'cp -r {path} {PROG_DIR}{path.parent}')
 
 
 def run() -> None:
     args: Namespace = parse_args()
     config: dict[str, Any] = load_config()
-
-    def verbose() -> str:
-        """
-        Checks args for verbosity flag and returns a string that can be used in
-        other commands.
-        """
-
-        return '-v' if args.v or args.verbose else ''
 
     if ['addchanges', 'add', 'a'].count(args.subcmd) > 0:
         cfiles: dict[str, Any] = config.get('files')
@@ -166,16 +158,16 @@ def run() -> None:
 
             for path in cfiles.get('etc'):
                 source = f'{PROG_DIR}/etc/{path}'
-                os.system(f'sudo cp {verbose()} {source} /etc/{path}')
+                os.system(f'sudo cp {source} /etc/{path}')
 
             for path in cfiles.get('home'):
                 source = f'{PROG_DIR}{HOME}/{path}'
-                os.system(f'sudo cp {verbose()} {source} {HOME}/{path}')
+                os.system(f'sudo cp {source} {HOME}/{path}')
 
             for path in cdirs.get('home'):
                 source = f'{PROG_DIR}{HOME}/{path}'
                 os.makedirs(f'{HOME}/{source}', exist_ok=True)
-                os.system(f'sudo cp {verbose()} -r {source} {HOME}/{path}')
+                os.system(f'sudo cp -r {source} {HOME}/{path}')
 
         elif ['pkgs', 'p'].count(args.installer_subcmd) > 0:
             packages: dict[str, Any] = config.get('packages')

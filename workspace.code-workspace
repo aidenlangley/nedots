@@ -22,6 +22,9 @@
 			"path": "/home/aiden/.config/fontconfig"
 		},
 		{
+			"path": "/home/aiden/.config/gammastep"
+		},
+		{
 			"path": "/home/aiden/.config/gtk-3.0"
 		},
 		{
@@ -40,6 +43,12 @@
 			"path": "/home/aiden/.config/polybar"
 		},
 		{
+			"path": "/home/aiden/.config/qt5ct"
+		},
+		{
+			"path": "/home/aiden/.config/ranger"
+		},
+		{
 			"path": "/home/aiden/.config/spotify-tui"
 		},
 		{
@@ -50,6 +59,12 @@
 		},
 		{
 			"path": "/home/aiden/.config/systemd"
+		},
+		{
+			"path": "/home/aiden/.config/waybar"
+		},
+		{
+			"path": "/home/aiden/.config/yambar"
 		}
 	],
 	"settings": {
