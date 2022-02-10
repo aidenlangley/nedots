@@ -1,0 +1,13 @@
+conf.d/tokens.fish
+conf.d/sway.fish
+fish_variables
+
+# Fisher plugins that we want to install manually
+conf.d/hydro.fish
+conf.d/nvm.fish
+completions/fisher.fish
+completions/nvm.fish
+functions/fisher.fish
+functions/fish*_prompt.fish
+functions/_nvm_*.fish
+functions/nvm.fish

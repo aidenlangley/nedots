@@ -1,0 +1,11 @@
+[Unit]
+Description=liquidctl, AIO controller
+
+[Service]
+Type=oneshot
+ExecStart=liquidctl initialize all
+ExecStart=liquidctl set pump speed 100
+ExecStart=liquidctl set fan speed  20 30  30 50  34 80  40 90  50 100
+
+[Install]
+WantedBy=default.target

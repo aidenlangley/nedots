@@ -1,0 +1,39 @@
+#! /usr/bin/env fish
+
+set window_id $argv[1]
+set class $argv[2]
+set instance $argv[3]
+set consequences $argv[4]
+set title (xtitle $window_id)
+
+switch $class
+case 'Firefox'
+    switch $title
+    case 'Picture-in-Picture'
+        echo 'state=floating sticky=on'
+    end
+end
+
+### Example
+# [window_id]: 60818256
+# [class]: Firefox
+# [instance]: Toolkit
+# [consequences]:
+#   monitor=
+#   desktop=
+#   node=
+#   state=
+#   layer=above
+#   split_dir=
+#   split_ratio=0.000000
+#   hidden=off
+#   sticky=off
+#   private=off
+#   locked=off
+#   marked=off
+#   center=off
+#   follow=off
+#   manage=on
+#   focus=off
+#   border=on
+#   rectangle=

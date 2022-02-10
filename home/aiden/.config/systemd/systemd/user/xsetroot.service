@@ -1,0 +1,14 @@
+[Unit]
+After=bspwm-session.target
+Description=xsetroot, sets xorg variables, corrects cursor size in bspwm
+Documentation=man:xsetroot(1)
+PartOf=bspwm-session.target
+Requisite=bspwm-session.target
+
+[Service]
+ExecStart=/usr/bin/xsetroot -cursor_name left_ptr
+StandardError=journal
+Type=oneshot
+
+[Install]
+WantedBy=bspwm-session.target

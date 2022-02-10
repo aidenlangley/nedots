@@ -1,0 +1,13 @@
+[Unit]
+After=graphical-session.target
+Description=lxpolkit, authentication service
+Documentation=man:lxpolkit(1)
+PartOf=graphical-session.target
+Requisite=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/lxpolkit
+StandardError=journal
+
+[Install]
+WantedBy=graphical-session.target

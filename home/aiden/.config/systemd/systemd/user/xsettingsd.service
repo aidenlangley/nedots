@@ -1,0 +1,13 @@
+[Unit]
+After=graphical-session.target
+Description=xsettingsd, lightweight xsettings daemon
+Documentation=man:xsettingsd(1)
+PartOf=graphical-session.target
+Requisite=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/xsettingsd
+StandardError=journal
+
+[Install]
+WantedBy=graphical-session.target

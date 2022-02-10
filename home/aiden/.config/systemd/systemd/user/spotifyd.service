@@ -1,0 +1,16 @@
+[Unit]
+After=network-online.target
+After=sound.target
+Description=spotifyd
+Documentation=https://github.com/Spotifyd/spotifyd
+Wants=network-online.target
+Wants=sound.target
+
+[Service]
+ExecStart=/usr/bin/spotifyd --no-daemon
+Restart=always
+RestartSec=12
+StandardError=journal
+
+[Install]
+WantedBy=default.target

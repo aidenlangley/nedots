@@ -1,0 +1,13 @@
+[Unit]
+After=polybar.target
+Description=network-manager-applet
+Documentation=man:nm-applet(1)
+PartOf=polybar.target
+Requisite=polybar.target
+
+[Service]
+ExecStart=/usr/bin/nm-applet --indicator
+StandardError=journal
+
+[Install]
+WantedBy=polybar.target

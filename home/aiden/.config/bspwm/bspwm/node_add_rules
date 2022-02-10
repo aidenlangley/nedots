@@ -1,0 +1,25 @@
+#! /usr/bin/env fish
+
+set float_arg '-t floating'
+set sticky_arg '-g sticky'
+
+function float_window -a node_id window_title
+    bspc node $node_id $float_arg
+    echo "$node_id: $window_title $float_arg"
+end
+
+function float_sticky_window -a node_id window_title
+    bspc node $node_id $float_arg $sticky_arg
+    echo "$node_id: $window_title $float_arg $sticky_arg"
+end
+
+# Subscribe to node_add events (a new window has opened.)
+bspc subscribe node_add | while read -a msg
+    set node_id $msg[5]
+    set window_title (xtitle $node_id)
+
+    # Float Firefox's Picture-in-Picture window.
+    if test $window_title = 'Picture-in-Picture'
+        float_sticky_window $node_id $window_title
+    end
+end

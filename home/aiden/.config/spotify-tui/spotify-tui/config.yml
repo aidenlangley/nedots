@@ -1,0 +1,37 @@
+behavior:
+  seek_milliseconds: 5000
+  volume_increment: 10
+  tick_rate_milliseconds: 8
+  table_text_emphasis: true
+  show_loading_indicator: true
+  enforce_wide_search_bar: false
+  liked_icon: ♥
+  shuffle_icon: 
+  repeat_track_icon: ¹
+  repeat_context_icon: 
+  playing_icon: ▶
+  paused_icon: ⏸
+  set_window_title: true
+
+keybindings:
+  back: "q"
+  jump_to_album: "a"
+  jump_to_artist_album: "A"
+  manage_devices: "d"
+  decrease_volume: "-"
+  increase_volume: "="
+  toggle_playback: " "
+  seek_backwards: "<"
+  seek_forwards: ">"
+  next_track: "n"
+  previous_track: "p"
+  copy_song_url: "c"
+  copy_album_url: "C"
+  shuffle: "ctrl-s"
+  repeat: "r"
+  help: "?"
+  search: "/"
+  audio_analysis: "v"
+  jump_to_context: "o"
+  basic_view: "B"
+  add_item_to_queue: "z"

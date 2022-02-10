@@ -1,0 +1,14 @@
+[Unit]
+After=xorg-session.target
+Description=xrdb, resource database utility
+Documentation=man:xrdb(1)
+PartOf=xorg-session.target
+Requisite=xorg-session.target
+
+[Service]
+ExecStart=/usr/bin/xrdb -merge /home/aiden/.Xresources
+StandardError=journal
+Type=oneshot
+
+[Install]
+WantedBy=xorg-session.target

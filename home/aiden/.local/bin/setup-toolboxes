@@ -1,0 +1,7 @@
+#! /usr/bin/env fish
+
+set msg (set_color -o red)'`toolbox` not available.'(set_color normal)
+if test ! (command -v toolbox); echo $msg && exit 1; end
+
+toolbox create rust -y
+toolbox run -c rust 'sudo dnf install -y fish hub @development-tools openssl-devel'

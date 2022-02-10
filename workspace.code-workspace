@@ -1,0 +1,63 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "/home/aiden/.config/alacritty"
+		},
+		{
+			"path": "/home/aiden/.config/bottom"
+		},
+		{
+			"path": "/home/aiden/.config/bspwm"
+		},
+		{
+			"path": "/home/aiden/.config/dunst"
+		},
+		{
+			"path": "/home/aiden/.config/fish"
+		},
+		{
+			"path": "/home/aiden/.config/fontconfig"
+		},
+		{
+			"path": "/home/aiden/.config/gtk-3.0"
+		},
+		{
+			"path": "/home/aiden/.config/htop"
+		},
+		{
+			"path": "/home/aiden/.config/lvim"
+		},
+		{
+			"path": "/home/aiden/.config/pcmanfm"
+		},
+		{
+			"path": "/home/aiden/.config/picom"
+		},
+		{
+			"path": "/home/aiden/.config/polybar"
+		},
+		{
+			"path": "/home/aiden/.config/spotify-tui"
+		},
+		{
+			"path": "/home/aiden/.config/spotifyd"
+		},
+		{
+			"path": "/home/aiden/.config/sxhkd"
+		},
+		{
+			"path": "/home/aiden/.config/systemd"
+		}
+	],
+	"settings": {
+		"cSpell.words": [
+			"cdirs",
+			"cfiles",
+			"nedots",
+			"NUFFIN"
+		]
+	}
+}

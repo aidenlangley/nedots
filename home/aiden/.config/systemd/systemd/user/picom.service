@@ -1,0 +1,13 @@
+[Unit]
+After=xorg-session.target
+Description=picom, X compositor
+Documentation=man:picom(1)
+PartOf=xorg-session.target
+Requisite=xorg-session.target
+
+[Service]
+ExecStart=/usr/bin/picom
+StandardError=journal
+
+[Install]
+WantedBy=xorg-session.target

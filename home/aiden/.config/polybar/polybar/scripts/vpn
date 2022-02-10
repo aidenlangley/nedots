@@ -1,0 +1,47 @@
+#!/usr/bin/env fish
+
+# Check whether or not the VPN, with the name of $conn, is running via `wg show`.
+function get_status -a conn
+    if set -q conn
+        set -l conn_status (sudo wg show $conn 2>/dev/null | head -n 1 | awk '{print $NF }')
+        if test "$conn" = "$conn_status"
+            echo 1
+        else
+            echo 0
+        end
+    else
+        set -l msg "In order to check the VPN status we require the name of a"
+        set -a msg "connection to check, but none was passed to `get_status`."
+        echo (string collect $msg)
+        exit 1
+    end
+end
+
+set -l conn_status (get_status $argv[1])
+set -l connected_msg ' '(string split '-' $argv[1])[1]
+set -l disconnect_msg ' down'
+
+if test $conn_status -eq 1
+    switch $argv[2]
+        case 'toggle'
+            sudo wg-quick down $argv[1] 2>/dev/null
+            set -l icon /usr/share/icons/Qogir/scalable/apps/network-wired.svg
+            notify-send 'WireGuard' "Disconnected from <b>$argv[1]</b>" -i $icon
+            echo $disconnect_msg
+        case '*'
+            echo $connected_msg
+    end
+else if test $conn_status -eq 0
+    switch $argv[2]
+        case 'toggle'
+            sudo wg-quick up $argv[1] 2>/dev/null
+            set -l icon /usr/share/icons/Qogir/scalable/apps/system-config-firewall.svg
+            notify-send 'WireGuard' "Connected to <b>$argv[1]</b>" -i $icon
+            echo $connected_msg
+        case '*'
+            echo $disconnect_msg
+    end
+else
+    echo "Not sure what to do with $conn_status that was returned by `get_status`."
+    exit 1
+end

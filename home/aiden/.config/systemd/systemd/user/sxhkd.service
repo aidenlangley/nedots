@@ -1,0 +1,13 @@
+[Unit]
+After=bspwm-session.target
+Description=sxhkd, simple X hotkey daemon
+Documentation=man:sxhkd(1)
+PartOf=bspwm-session.target
+Requisite=bspwm-session.target
+
+[Service]
+ExecStart=/usr/bin/sxhkd
+StandardError=journal
+
+[Install]
+WantedBy=bspwm-session.target

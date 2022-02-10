@@ -1,0 +1,13 @@
+[Unit]
+After=polybar.target
+Description=polybar, status bar
+Documentation=man:polybar(1)
+PartOf=polybar.target
+Requisite=polybar.target
+
+[Service]
+ExecStart=/usr/bin/polybar primary -r
+StandardError=journal
+
+[Install]
+WantedBy=polybar.target

@@ -1,0 +1,8 @@
+[Unit]
+BindsTo=xorg-session.target
+Description=polybar
+Documentation=man:systemd.special(7)
+Wants=xorg-session.target
+
+[Install]
+WantedBy=xorg-session.target

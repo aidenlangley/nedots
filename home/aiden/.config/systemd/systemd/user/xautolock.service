@@ -1,0 +1,13 @@
+[Unit]
+After=xorg-session.target
+Description=xautolock, locks session when idle
+Documentation=man:xautolock(1)
+PartOf=xorg-session.target
+Requisite=xorg-session.target
+
+[Service]
+ExecStart=/usr/bin/xautolock
+StandardError=journal
+
+[Install]
+WantedBy=xorg-session.target

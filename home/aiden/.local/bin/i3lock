@@ -1,0 +1,69 @@
+#! /usr/bin/env fish
+
+set affirm          b8bb26 #b8bb26
+set background      1d2021 #1d2021
+set bgalt           504945 #504945
+set decline         fb4934 #fb4934
+set fgalt           fbf1c7 #d5c4a1
+set foreground      fbf1c7 #fbf1c7
+set primary         8ec07c #8ec07c
+set warn            fabd2f #fabd2f
+
+set blur            8
+set flags           'clock'
+set radius          128
+set ring_width      2
+set screen          1
+
+set font            'JetBrains Mono'
+set font_size       24
+set font_size_date  20
+set font_size_time  32
+set outline_width   1
+
+set lock            'Locking...'
+set noinput         'Enter password'
+set verif           'Unlocking...'
+set wrong           'Nope!'
+
+set args            "--screen=$screen"
+set -a args         "--bshl-color=$warn"
+set -a args         "--date-color=$foreground"
+set -a args         "--date-font=$font"
+set -a args         "--date-size=$font_size_date"
+set -a args         "--inside-color=$background"
+set -a args         "--insidever-color=$background"
+set -a args         "--insidewrong-color=$background"
+set -a args         "--keyhl-color=$foreground"
+set -a args         "--layout-color=$foreground"
+set -a args         "--layout-font=$font"
+set -a args         "--layout-size=$font_size"
+set -a args         "--line-color=$background"
+set -a args         "--lock-text=$lock"
+set -a args         "--modif-color=$warn"
+set -a args         "--noinput-text=$noinput"
+set -a args         "--radius=$radius"
+set -a args         "--ring-color=$bgalt"
+set -a args         "--ring-width=$ring_width"
+set -a args         "--ringver-color=$primary"
+set -a args         "--ringwrong-color=$decline"
+set -a args         "--separator-color=$background"
+set -a args         "--time-color=$foreground"
+set -a args         "--time-font=$font"
+set -a args         "--time-size=$font_size_time"
+set -a args         "--timeoutline-width=$outline_width"
+set -a args         "--verif-color=$primary"
+set -a args         "--verif-font=$font"
+set -a args         "--verif-size=$font_size"
+set -a args         "--verif-text=$verif"
+set -a args         "--wrong-color=$decline"
+set -a args         "--wrong-font=$font"
+set -a args         "--wrong-size=$font_size"
+set -a args         "--wrong-text=$wrong"
+set -a args         '--'(string join ' --' $flags)
+
+# Blurring a screenshot ourselves, i3-lock is slow af.
+set image /tmp/screencap.png
+ffmpeg -loglevel quiet -f x11grab -y -i $DISPLAY -filter_complex "boxblur=8" -vframes 1 $image
+
+exec /usr/bin/i3lock $args --image $image

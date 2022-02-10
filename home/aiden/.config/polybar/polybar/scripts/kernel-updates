@@ -1,0 +1,15 @@
+#!/usr/bin/env fish
+
+dnf check-update &> /dev/null
+set dnf_count (dnf updateinfo -q --list | wc -l)
+set flatpak_count (echo 'n' | flatpak update 2>/dev/null | tail -n +5 | head -2 | wc -l)
+set updates (math $dnf_count + $flatpak_count)
+set kernel_ver (uname -r | cut -d '-' -f1)
+
+if test $updates -gt 0
+    dunstify 'Updates pending!' "There are $updates available package updates." \
+        -a Fedora -i fedora-logo-icon
+    echo " [$updates] $kernel_ver"
+else
+    echo " $kernel_ver"
+end

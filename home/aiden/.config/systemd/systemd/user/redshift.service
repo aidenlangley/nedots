@@ -1,0 +1,13 @@
+[Unit]
+After=xorg-session.target
+Description=redshift, manages screen colour temperature
+Documentation=man:redshift(1)
+PartOf=xorg-session.target
+Requisite=xorg-session.target
+
+[Service]
+ExecStart=/usr/bin/redshift -l -35.4:173.8 -b 1:0.8 -t 6500:4000
+StandardError=journal
+
+[Install]
+WantedBy=xorg-session.target

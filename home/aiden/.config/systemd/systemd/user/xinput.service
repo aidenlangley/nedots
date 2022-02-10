@@ -1,0 +1,14 @@
+[Unit]
+After=xorg-session.target
+Description=xinput, sets xorg variables for input devices, disables mouse acceleration
+Documentation=man:xinput(1)
+PartOf=xorg-session.target
+Requisite=xorg-session.target
+
+[Service]
+ExecStart=/usr/bin/xinput set-prop 'Logitech G502 HERO Gaming Mouse' 'libinput Accel Profile Enabled' 0, 1
+StandardError=journal
+Type=oneshot
+
+[Install]
+WantedBy=xorg-session.target

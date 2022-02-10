@@ -1,0 +1,26 @@
+#!/usr/bin/env fish
+
+# Firstly check if spt is actually going
+spt pb --status &> /dev/null
+if test $status -ne 0
+    exit 1
+end
+
+# set -l format ' %v% %f %t, %a'
+set -l format ' %t, %a'
+set -l device 'aiden-desktop-fedora'
+switch $argv
+    case 'toggle'
+        echo (spt playback -d $device -t -f $format)
+    case 'next'
+        echo (spt playback -d $device -n -f $format)
+    case 'prev'
+        echo (spt playback -d $device -p -f $format)
+    # case 'volup'
+    #     echo (spt playback -d $device -v (math (spt pb -f %v) + 10) -f $format)
+    # case 'voldown'
+    #     echo (spt playback -d $device -v (math (spt pb -f %v) - 10) -f $format)
+    case '*'
+        # Only thing left to do is report on playback
+        echo (spt playback -d $device -f $format)
+end
