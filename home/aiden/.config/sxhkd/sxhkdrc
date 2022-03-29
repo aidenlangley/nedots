@@ -60,11 +60,11 @@ super + {t, shift + t, shift + g, f}
 	bspc node -t {tiled, pseudo_tiled, floating, fullscreen}
 
 # Focus the node in the given direction.
-super + {h, j, k, l}
+super + {Left, Down, Up, Right}
 	bspc node -f {west, south, north, east}
 
 # Move & swap the node with the node in the given direction.
-super + shift + {h, j, k, l}
+super + shift + {Left, Down, Up, Right}
 	bspc node -s {west, south, north, east}
 
 # Focus, or move node to, the next/previous desktop on the current monitor.
@@ -94,7 +94,7 @@ super + ctrl + {m, x, s, p}
 	bspc node -g {marked, locked, sticky, private}
 
 # Preselect in direction.
-super + ctrl + {h, j, k, l}
+super + ctrl + {Left, Down, Up, Right}
 	bspc node -p {west, south, north, east}
 
 # Move focused node to preselection.
@@ -114,7 +114,7 @@ super + ctrl + {1-9}
 	bspc node -o 0.{1-9}
 
 # Smart resize - moves `n` pixels.
-super + ctrl + shift + {h, j, k, l}
+super + ctrl + shift + {Left, Down, Up, Right}
 	n=8; \
 	{ \
 		d1=left; d2=right; dx=-$n; dy=0;, \
@@ -125,15 +125,15 @@ super + ctrl + shift + {h, j, k, l}
 	bspc node -z $d1 $dx $dy || bspc node -z $d2 $dx $dy
 
 # Expand a window by moving one of its side outward.
-super + ctrl + {h, j, k, l}
+super + ctrl + {Left, Down, Up, Right}
 	bspc node -z {left -8 0, bottom 0 8, top 0 -8, right 8 0}
 
 # Contract a window by moving one of its side inward.
-super + ctrl + shift + {h, j, k, l}
+super + ctrl + shift + {Left, Down, Up, Right}
 	bspc node -z {right -8 0, top 0 8, bottom 0 -8, left 8 0}
 
 # Move a floating window.
-super + {h, j, k, l}
+super + {Left, Down, Up, Right}
 	bspc node -v {-8 0, 0 8, 0 -8, 8 0}
 
 XF86AudioRaiseVolume

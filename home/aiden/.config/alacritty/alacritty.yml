@@ -7,6 +7,7 @@ window:
     y: 4
   dynamic_padding: false
   decorations: none
+  opacity: 0.95
   dynamic_title: true
 
 font:
@@ -49,8 +50,6 @@ bell:
   animation: EaseOutExpo
   duration: 150
   color: '#504945'
-
-background_opacity: 0.95
 
 selection:
   save_to_clipboard: true
