@@ -4,11 +4,15 @@ mod sanity_checks;
 mod settings;
 mod utils;
 
+use crate::add::git;
 use clap::{Parser, Subcommand};
 use install::{Distro, InstallCommand};
 use nix::unistd::Uid;
 use settings::Settings;
-use std::process::exit;
+use std::{
+    io::{stdout, Write},
+    process::exit,
+};
 
 #[derive(Debug, Parser)]
 #[clap(about = "Tool for installing & managing ne/any-dots.")]
@@ -31,13 +35,14 @@ struct Args {
 #[derive(Debug, Subcommand)]
 enum Command {
     #[clap(about = "Add changes to remote by commiting & pushing local changes \
-        to git repository. Conflicts are reported on, and it's expected that \
-        you handle them manually.")]
+    to git repository. Conflicts are reported on, and it's expected that \
+    you handle them manually.")]
     Add,
+
     #[clap(about = "Update config files by pulling changes from remote & \
-        applying them locally. If files have been modified more recently than \
-        the latest remote changes, this operation will stop. Overwrite any \
-        local changes with --force/-f.")]
+    applying them locally. If files have been modified more recently than \
+    the latest remote changes, this operation will stop. Overwrite any \
+    local changes with --force/-f.")]
     Update {
         #[clap(short, long)]
         #[clap(help = "Only update the folders specified.")]
@@ -52,7 +57,7 @@ enum Command {
     Check,
 
     #[clap(about = "Install packages, configs & perform misc. install \
-        operations.")]
+    operations.")]
     Install {
         #[clap(short, long)]
         distro: Option<Distro>,
@@ -77,7 +82,7 @@ fn read_settings() -> Settings {
 
 fn add(settings: Settings) {
     if Uid::effective().is_root() {
-        match add::add_changes(settings.root, &settings.path) {
+        match add::add_file_changes(settings.root, &settings.path) {
             Ok(op) => println!("{:#?}", op.results),
             Err(e) => {
                 println!("{}", e);
@@ -86,8 +91,18 @@ fn add(settings: Settings) {
         }
     }
 
-    match add::add_changes(settings.user, &settings.path) {
+    match add::add_file_changes(settings.user, &settings.path) {
         Ok(op) => println!("{:?}", op.results),
+        Err(e) => {
+            println!("{}", e);
+            exit(1)
+        }
+    }
+
+    match git::add(&settings.path) {
+        Ok(o) => stdout()
+            .write_all(&o.stdout)
+            .expect("Failed to write stdout!"),
         Err(e) => {
             println!("{}", e);
             exit(1)
@@ -129,7 +144,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{settings::Settings, Args};
+    use crate::{sanity_checks, settings::Settings, Args};
     use clap::IntoApp;
 
     #[test]
@@ -140,6 +155,17 @@ mod tests {
     #[test]
     fn read_settings() {
         if let Err(e) = Settings::new() {
+            panic!("{}", e);
+        }
+    }
+
+    #[test]
+    fn run_sanity_checks() {
+        if let Err(e) = sanity_checks::check_git() {
+            panic!("{}", e);
+        }
+
+        if let Err(e) = sanity_checks::check_flatpak() {
             panic!("{}", e);
         }
     }
