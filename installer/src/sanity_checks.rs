@@ -6,10 +6,10 @@ use std::{
 };
 
 pub(crate) enum SanityCheckError {
-    CheckFailure { prog: &'static str },
+    CheckFailure { check: &'static str },
     GitMissing,
     FlatpakMissing,
-    GitRepoFailure { path: String },
+    GitRepoFailure,
 }
 
 const MISSING_ERROR: &str = "is not installed, or is not accessible. The \
@@ -18,19 +18,18 @@ binary/executable must be visible to `sh`, `bash`, `fish`, etc. via $PATH.";
 impl Display for SanityCheckError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SanityCheckError::CheckFailure { prog } => write!(
+            SanityCheckError::CheckFailure { check } => write!(
                 f,
                 "Failed to sanity check `{}`, please open an issue on GitHub.",
-                prog
+                check
             ),
             SanityCheckError::GitMissing => write!(f, "`git` {}", MISSING_ERROR),
             SanityCheckError::FlatpakMissing => write!(f, "`flatpak` {}", MISSING_ERROR),
-            SanityCheckError::GitRepoFailure { path } => write!(
+            SanityCheckError::GitRepoFailure => write!(
                 f,
-                "Encountered a problem when checking the integrity of this \
-                `git` repository at {}, please verify the directory has been \
-                initialised as a `git` repository and configured correctly.",
-                path
+                "Encountered a problem when checking the integrity of `git` \
+                repository, please verify the directory has been initialised \
+                as a `git` repository and configured correctly.",
             ),
         }
     }
@@ -45,7 +44,7 @@ pub(super) fn check_git() -> Result<(), SanityCheckError> {
             }
             Ok(())
         }
-        Err(_) => Err(SanityCheckError::CheckFailure { prog: "git" }),
+        Err(_) => Err(SanityCheckError::CheckFailure { check: "git" }),
     }
 }
 
@@ -58,7 +57,7 @@ pub(super) fn check_flatpak() -> Result<(), SanityCheckError> {
             }
             Ok(())
         }
-        Err(_) => Err(SanityCheckError::CheckFailure { prog: "flatpak" }),
+        Err(_) => Err(SanityCheckError::CheckFailure { check: "flatpak" }),
     }
 }
 
@@ -76,21 +75,17 @@ pub(super) fn check_repo() -> Result<(), SanityCheckError> {
         Ok(o) => {
             if !o.status.success() {
                 stdout()
-                    .write_all(&o.stdout)
-                    .expect("Failed to write stdout!");
-                stdout()
                     .write_all(&o.stderr)
-                    .expect("Failed to write stderr!");
-
-                return Err(SanityCheckError::GitRepoFailure {
-                    path: settings.path.to_string_lossy().to_string(),
-                });
+                    .expect("Failed to write stderr from `git status`!");
+                return Err(SanityCheckError::GitRepoFailure);
             }
 
+            stdout()
+                .write_all(&o.stdout)
+                .expect("Failed to write stdout from `git status`!");
             Ok(())
-            // assert!(o.status.success())
         }
-        Err(_) => Err(SanityCheckError::CheckFailure { prog: "git repo" }),
+        Err(_) => Err(SanityCheckError::CheckFailure { check: "git repo" }),
     }
 }
 

@@ -9,10 +9,7 @@ use clap::{Parser, Subcommand};
 use install::{Distro, InstallCommand};
 use nix::unistd::Uid;
 use settings::Settings;
-use std::{
-    io::{stdout, Write},
-    process::exit,
-};
+use std::{path::PathBuf, process};
 
 #[derive(Debug, Parser)]
 #[clap(about = "Tool for installing & managing ne/any-dots.")]
@@ -24,9 +21,9 @@ struct Args {
     #[clap(short, long, parse(from_occurrences))]
     verbose: usize,
 
-    #[clap(short, long, env = "HOME")]
-    #[clap(help = "Path of nedots parent data directory")]
-    path: String,
+    #[clap(short, long)]
+    #[clap(help = "Path of nedots data directory")]
+    path: Option<String>,
 
     #[clap(subcommand)]
     cmd: Option<Command>,
@@ -75,7 +72,7 @@ fn read_settings() -> Settings {
         Ok(s) => s,
         Err(e) => {
             println!("{}", e);
-            exit(1)
+            process::exit(1)
         }
     }
 }
@@ -86,27 +83,34 @@ fn add(settings: Settings) {
             Ok(op) => println!("{:#?}", op.results),
             Err(e) => {
                 println!("{}", e);
-                exit(1)
+                process::exit(1)
             }
         }
     }
 
     match add::add_file_changes(settings.user, &settings.path) {
-        Ok(op) => println!("{:?}", op.results),
+        Ok(op) => println!("{:#?}", op.results),
         Err(e) => {
             println!("{}", e);
-            exit(1)
+            process::exit(1)
         }
     }
 
-    match git::add(&settings.path) {
-        Ok(o) => stdout()
-            .write_all(&o.stdout)
-            .expect("Failed to write stdout!"),
-        Err(e) => {
-            println!("{}", e);
-            exit(1)
-        }
+    if let Err(e) = sanity_checks::check_repo() {
+        println!("{}", e);
+        process::exit(1)
+    }
+
+    if let Err(_) = git::add(&settings.path) {
+        process::exit(1)
+    }
+
+    if let Err(_) = git::commit(&settings.path) {
+        process::exit(1)
+    }
+
+    if let Err(_) = git::push(&settings.path) {
+        process::exit(1)
     }
 }
 
@@ -115,19 +119,39 @@ fn install(distro: Option<Distro>, assume_yes: bool, cmd: &InstallCommand) {
         InstallCommand::Core => todo!(),
         InstallCommand::X11 => todo!(),
         InstallCommand::Wayland => todo!(),
-        InstallCommand::Flatpaks => todo!(),
+        InstallCommand::Flatpaks => {
+            if let Err(e) = sanity_checks::check_flatpak() {
+                println!("{}", e);
+                process::exit(1)
+            }
+
+            todo!()
+        }
         InstallCommand::Dots => todo!(),
     }
 }
 
 fn main() {
     let args = Args::parse();
-    let settings: Settings = read_settings();
+    let mut settings: Settings = read_settings();
+
+    // If user has passed us a path, replace the value in settings with the path
+    // provided.
+    if let Some(p) = args.path {
+        settings.path = PathBuf::from(p);
+    }
 
     match args.cmd {
         cmd => match cmd {
             Some(sub_cmd) => match sub_cmd {
-                Command::Add => add(settings),
+                Command::Add => {
+                    if let Err(e) = sanity_checks::check_git() {
+                        println!("{}", e);
+                        process::exit(1)
+                    }
+
+                    add(settings)
+                }
                 Command::Install {
                     distro,
                     assume_yes,
@@ -144,7 +168,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::{sanity_checks, settings::Settings, Args};
+    use crate::{settings::Settings, Args};
     use clap::IntoApp;
 
     #[test]
@@ -155,17 +179,6 @@ mod tests {
     #[test]
     fn read_settings() {
         if let Err(e) = Settings::new() {
-            panic!("{}", e);
-        }
-    }
-
-    #[test]
-    fn run_sanity_checks() {
-        if let Err(e) = sanity_checks::check_git() {
-            panic!("{}", e);
-        }
-
-        if let Err(e) = sanity_checks::check_flatpak() {
             panic!("{}", e);
         }
     }
