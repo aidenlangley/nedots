@@ -1,3 +1,6 @@
+//! Private module `git::operations`, functions within are exposed by public
+//! functions in module `git`.
+
 use super::GitError;
 use chrono::Local;
 use std::{
@@ -6,6 +9,14 @@ use std::{
     process::{Command, Output},
 };
 
+/// Wrapper function around the Command: `git add .`
+///
+/// # Errors
+/// Unsure what errors might be thrown by this operation, but throws
+/// `GitError::AddFailure` or `GitError::Unknown` accordingly.
+///
+/// # Panics
+/// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn add(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
@@ -34,6 +45,14 @@ pub(super) fn add(dest: &Path) -> Result<Output, GitError> {
     }
 }
 
+/// Wrapper function around the Command: `git commit -m "Latest ($datetime)"`.
+///
+/// # Errors
+/// Change conflicts throw `GitError::Conflict`,  or `GitError::Unknown` if the
+/// error is unrecognised.
+///
+/// # Panics
+/// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn commit(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
@@ -63,6 +82,14 @@ pub(super) fn commit(dest: &Path) -> Result<Output, GitError> {
     }
 }
 
+/// Wrapper function around the Command: `git push`.
+///
+/// # Errors
+/// Authentication errors throw `GitError::AuthFailure`,  or `GitError::Unknown`
+/// if the error is unrecognised.
+///
+/// # Panics
+/// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn push(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args(["-C", dest.to_string_lossy().to_string().as_str(), "push"])
@@ -86,7 +113,18 @@ pub(super) fn push(dest: &Path) -> Result<Output, GitError> {
     }
 }
 
-pub(super) fn _stash_push(dest: &Path) -> Result<Output, GitError> {
+/// Wrapper function around the Command: `git stash push`. Primarily used when
+/// performing operations on this `git` repo as part of the functionality
+/// provided by the binary, we only want to add changes from external files,
+/// in other words, not the installer code, just the dot file changes.
+///
+/// # Errors
+/// Authentication errors throw `GitError::StashPushFailure`, or
+/// `GitError::Unknown` if the error is unrecognised.
+///
+/// # Panics
+/// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
+pub(super) fn stash_push(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
             "-C",
@@ -102,7 +140,7 @@ pub(super) fn _stash_push(dest: &Path) -> Result<Output, GitError> {
                 std::io::stdout()
                     .write_all(&o.stderr)
                     .expect("Failed to write stderr from `git stash push`!");
-                return Err(GitError::_StashPushFailure);
+                return Err(GitError::StashPushFailure);
             }
 
             std::io::stdout()
@@ -114,7 +152,18 @@ pub(super) fn _stash_push(dest: &Path) -> Result<Output, GitError> {
     }
 }
 
-pub(super) fn _stash_pop(dest: &Path) -> Result<Output, GitError> {
+/// Wrapper function around the Command: `git stash pop`. Primarily used when
+/// performing operations on this `git` repo as part of the functionality
+/// provided by the binary, we only want to add changes from external files,
+/// in other words, not the installer code, just the dot file changes.
+///
+/// # Errors
+/// Authentication errors throw `GitError::StashPopFailure`, or
+/// `GitError::Unknown` if the error is unrecognised.
+///
+/// # Panics
+/// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
+pub(super) fn stash_pop(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
             "-C",
@@ -130,7 +179,7 @@ pub(super) fn _stash_pop(dest: &Path) -> Result<Output, GitError> {
                 std::io::stdout()
                     .write_all(&o.stderr)
                     .expect("Failed to write stderr from `git stash pop`!");
-                return Err(GitError::_StashPopFailure);
+                return Err(GitError::StashPopFailure);
             }
 
             std::io::stdout()
@@ -142,6 +191,19 @@ pub(super) fn _stash_pop(dest: &Path) -> Result<Output, GitError> {
     }
 }
 
+/// Wrapper function around the Command: `git rest --hard HEAD^`. Used in
+/// conjunction with `commit` to roll back our commit after testing.
+///
+/// This is a dangerous command and can really fuck your `git` tree. We really
+/// do want to nuke the latest commit, since this is a test, so we're happy to
+/// use `--hard`, and `HEAD^` refers to the last commit.
+///
+/// # Errors
+/// Failures throw a `GitError::_RevertFailure`, or `GitError::Unknown` if the
+/// error is unrecognised.
+///
+/// # Panics
+/// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn _reset_hard(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
