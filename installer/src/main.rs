@@ -1,15 +1,15 @@
-mod add;
+mod git;
 mod install;
 mod sanity_checks;
 mod settings;
 mod utils;
 
-use crate::add::git;
 use clap::{Parser, Subcommand};
 use install::{Distro, InstallCommand};
 use nix::unistd::Uid;
 use settings::Settings;
-use std::{path::PathBuf, process};
+use std::path::PathBuf;
+use utils::CopyOperation;
 
 #[derive(Debug, Parser)]
 #[clap(about = "Tool for installing & managing ne/any-dots.")]
@@ -72,45 +72,55 @@ fn read_settings() -> Settings {
         Ok(s) => s,
         Err(e) => {
             println!("{}", e);
-            process::exit(1)
+            std::process::exit(1)
         }
     }
 }
 
 fn add(settings: Settings) {
+    if let Err(_) = git::stash(&settings.path) {
+        std::process::exit(1)
+    }
+
     if Uid::effective().is_root() {
-        match add::add_file_changes(settings.root, &settings.path) {
-            Ok(op) => println!("{:#?}", op.results),
+        let mut copy_op = CopyOperation::new(settings.root);
+        match copy_op.copy_to(&settings.path) {
+            Ok(_) => println!("{:#?}", copy_op.results),
             Err(e) => {
                 println!("{}", e);
-                process::exit(1)
+                std::process::exit(1)
             }
         }
     }
 
-    match add::add_file_changes(settings.user, &settings.path) {
-        Ok(op) => println!("{:#?}", op.results),
+    let mut copy_op = CopyOperation::new(settings.user);
+    match copy_op.copy_to(&settings.path) {
+        Ok(_) => println!("{:#?}", copy_op.results),
         Err(e) => {
             println!("{}", e);
-            process::exit(1)
+            std::process::exit(1)
         }
     }
 
     if let Err(e) = sanity_checks::check_repo() {
         println!("{}", e);
-        process::exit(1)
+        std::process::exit(1)
     }
 
     if let Err(_) = git::add(&settings.path) {
-        process::exit(1)
+        std::process::exit(1)
     }
 
     if let Err(_) = git::commit(&settings.path) {
-        process::exit(1)
+        std::process::exit(1)
     }
 
     if let Err(_) = git::push(&settings.path) {
-        process::exit(1)
+        std::process::exit(1)
+    }
+
+    if let Err(_) = git::restore(&settings.path) {
+        std::process::exit(1)
     }
 }
 
@@ -122,7 +132,7 @@ fn install(distro: Option<Distro>, assume_yes: bool, cmd: &InstallCommand) {
         InstallCommand::Flatpaks => {
             if let Err(e) = sanity_checks::check_flatpak() {
                 println!("{}", e);
-                process::exit(1)
+                std::process::exit(1)
             }
 
             todo!()
@@ -147,7 +157,7 @@ fn main() {
                 Command::Add => {
                     if let Err(e) = sanity_checks::check_git() {
                         println!("{}", e);
-                        process::exit(1)
+                        std::process::exit(1)
                     }
 
                     add(settings)

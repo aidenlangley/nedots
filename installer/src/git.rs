@@ -1,25 +1,28 @@
+//! Public module that acts as a proxy between `operations` and it's caller.
+//! This module provides `git` functions, errors & tests.
+
 mod operations;
 
 use std::{fmt::Display, path::Path, process::Output};
 
-pub(crate) enum GitError {
-    _StashPushFailure,
-    _StashPopFailure,
+pub enum GitError {
     AddFailure,
     Conflict,
-    _RevertFailure,
     AuthFailure,
+    StashPushFailure,
+    StashPopFailure,
+    _RevertFailure,
     Unknown,
 }
 
 impl Display for GitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            GitError::_StashPushFailure => write!(
+            GitError::StashPushFailure => write!(
                 f,
                 "Failed `git stash push` to push latest changes to stash."
             ),
-            GitError::_StashPopFailure => write!(
+            GitError::StashPopFailure => write!(
                 f,
                 "Failed `git stash pop` to restore latest working tree \
                 from stash."
@@ -53,24 +56,24 @@ impl Display for GitError {
     }
 }
 
-pub(crate) fn add(dest: &Path) -> Result<Output, GitError> {
+pub fn add(dest: &Path) -> Result<Output, GitError> {
     operations::add(dest)
 }
 
-pub(crate) fn commit(dest: &Path) -> Result<Output, GitError> {
+pub fn commit(dest: &Path) -> Result<Output, GitError> {
     operations::commit(dest)
 }
 
-pub(crate) fn push(dest: &Path) -> Result<Output, GitError> {
+pub fn push(dest: &Path) -> Result<Output, GitError> {
     operations::push(dest)
 }
 
-fn _stash(dest: &Path) -> Result<Output, GitError> {
-    operations::_stash_push(dest)
+pub fn stash(dest: &Path) -> Result<Output, GitError> {
+    operations::stash_push(dest)
 }
 
-fn _restore(dest: &Path) -> Result<Output, GitError> {
-    operations::_stash_pop(dest)
+pub fn restore(dest: &Path) -> Result<Output, GitError> {
+    operations::stash_pop(dest)
 }
 
 fn _reset_hard(dest: &Path) -> Result<Output, GitError> {
@@ -83,7 +86,7 @@ mod tests {
     use std::{fs::File, path::Path};
 
     fn git_stash(path: &Path) {
-        let git_stash = super::_stash(path);
+        let git_stash = super::stash(path);
         match git_stash {
             Ok(o) => assert!(o.status.success()),
             Err(e) => assert!(false, "{}", e),
@@ -91,7 +94,7 @@ mod tests {
     }
 
     fn git_restore(path: &Path) {
-        let git_restore = super::_restore(path);
+        let git_restore = super::restore(path);
         match git_restore {
             Ok(o) => assert!(o.status.success()),
             Err(e) => assert!(false, "{}", e),

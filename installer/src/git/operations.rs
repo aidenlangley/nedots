@@ -11,11 +11,11 @@ use std::{
 
 /// Wrapper function around the Command: `git add .`
 ///
-/// # Errors
+/// ### Errors
 /// Unsure what errors might be thrown by this operation, but throws
 /// `GitError::AddFailure` or `GitError::Unknown` accordingly.
 ///
-/// # Panics
+/// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn add(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
@@ -47,11 +47,11 @@ pub(super) fn add(dest: &Path) -> Result<Output, GitError> {
 
 /// Wrapper function around the Command: `git commit -m "Latest ($datetime)"`.
 ///
-/// # Errors
+/// ### Errors
 /// Change conflicts throw `GitError::Conflict`,  or `GitError::Unknown` if the
 /// error is unrecognised.
 ///
-/// # Panics
+/// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn commit(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
@@ -84,11 +84,11 @@ pub(super) fn commit(dest: &Path) -> Result<Output, GitError> {
 
 /// Wrapper function around the Command: `git push`.
 ///
-/// # Errors
+/// ### Errors
 /// Authentication errors throw `GitError::AuthFailure`,  or `GitError::Unknown`
 /// if the error is unrecognised.
 ///
-/// # Panics
+/// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn push(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
@@ -118,11 +118,11 @@ pub(super) fn push(dest: &Path) -> Result<Output, GitError> {
 /// provided by the binary, we only want to add changes from external files,
 /// in other words, not the installer code, just the dot file changes.
 ///
-/// # Errors
+/// ### Errors
 /// Authentication errors throw `GitError::StashPushFailure`, or
 /// `GitError::Unknown` if the error is unrecognised.
 ///
-/// # Panics
+/// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn stash_push(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
@@ -157,11 +157,11 @@ pub(super) fn stash_push(dest: &Path) -> Result<Output, GitError> {
 /// provided by the binary, we only want to add changes from external files,
 /// in other words, not the installer code, just the dot file changes.
 ///
-/// # Errors
+/// ### Errors
 /// Authentication errors throw `GitError::StashPopFailure`, or
 /// `GitError::Unknown` if the error is unrecognised.
 ///
-/// # Panics
+/// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn stash_pop(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
@@ -198,11 +198,11 @@ pub(super) fn stash_pop(dest: &Path) -> Result<Output, GitError> {
 /// do want to nuke the latest commit, since this is a test, so we're happy to
 /// use `--hard`, and `HEAD^` refers to the last commit.
 ///
-/// # Errors
+/// ### Errors
 /// Failures throw a `GitError::_RevertFailure`, or `GitError::Unknown` if the
 /// error is unrecognised.
 ///
-/// # Panics
+/// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub(super) fn _reset_hard(dest: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
