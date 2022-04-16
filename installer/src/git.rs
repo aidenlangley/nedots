@@ -129,6 +129,15 @@ mod tests {
     /// In a nut shell, writes a file, runs `git_add`, followed by `git_commit`,
     /// and then rolls back. Stashes and restores working tree to avoid messing
     /// with dev work.
+    ///
+    /// ### Asserts
+    /// Each & every git operation must pass, the creation, and subsequent
+    /// deletion of the file necessary for the operations to run, must also
+    /// pass and/or not panic.
+    ///
+    /// ### Panics
+    /// When the test fails to create necessary files for testing the `git`
+    /// operations.
     fn all_ops() {
         let settings: Settings = crate::read_settings();
         git_stash(&settings.path);
@@ -140,10 +149,8 @@ mod tests {
         git_add(&settings.path);
         git_commit(&settings.path);
 
-        // Notice the user of `git reset --hard HEAD^`. This is a dangerous
-        // command and can really fuck your `git` tree. We really do want to
-        // nuke the latest commit, since this is a test, so we're happy to use
-        // `--hard`, and `HEAD^` refers to the last commit.
+        // Notice the use of `git reset **hard**`. This is dangerous. See
+        // `git::operations::_reset_hard()` for more information.
         git_reset_hard(&settings.path);
 
         // We can allow the code to continue if we encounter an error when we
