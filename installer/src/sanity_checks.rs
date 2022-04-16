@@ -1,3 +1,13 @@
+//! Sanity checks are commands that are run to verify whether or not `nedots`
+//! will be able to perform its' various operations prior to running them. The
+//! output is generally going to be more user friendly than errors returned by
+//! problems encountered during an operation, since these errors are few & far
+//! between, and they can be concisely reported on & quickly resolved by the
+//! user.
+//!
+//! Functions within this module are only shared with `super`, since other
+//! operations do not need to concern themselves with `sanity_checks`.
+
 use crate::settings::Settings;
 use std::{
     fmt::Display,
@@ -5,13 +15,16 @@ use std::{
     process::Command,
 };
 
-pub(crate) enum SanityCheckError {
+/// Error types returned when performing sanity checks.
+pub enum SanityCheckError {
     CheckFailure { check: &'static str },
     GitMissing,
     FlatpakMissing,
     GitRepoFailure,
 }
 
+/// When `command -v {prog}` fails, this message is returned by the `Display`
+/// trait implementation.
 const MISSING_ERROR: &str = "is not installed, or is not accessible. The \
 binary/executable must be visible to `sh`, `bash`, `fish`, etc. via $PATH.";
 
@@ -35,6 +48,12 @@ impl Display for SanityCheckError {
     }
 }
 
+/// Wrapper function around `command -v git`.
+///
+/// ### Errors
+/// Returns `SanityCheckError::GitMissing` when `git` is missing, this is the
+/// expected result when failing. If an unexpected error occurs,
+/// `SanityCheckError::CheckFailure` is returned.
 pub(super) fn check_git() -> Result<(), SanityCheckError> {
     let output = Command::new("command").args(["-v", "git"]).output();
     match output {
@@ -42,12 +61,19 @@ pub(super) fn check_git() -> Result<(), SanityCheckError> {
             if !o.status.success() {
                 return Err(SanityCheckError::GitMissing);
             }
+
             Ok(())
         }
         Err(_) => Err(SanityCheckError::CheckFailure { check: "git" }),
     }
 }
 
+/// Wrapper function around `command -v flatpak`.
+///
+/// ### Errors
+/// Returns `SanityCheckError::FlatpakMissing` when `flatpak` is missing, this
+/// is the expected result when failing. If an unexpected error occurs,
+/// `SanityCheckError::CheckFailure` is returned.
 pub(super) fn check_flatpak() -> Result<(), SanityCheckError> {
     let output = Command::new("command").args(["-v", "flatpak"]).output();
     match output {
@@ -61,6 +87,12 @@ pub(super) fn check_flatpak() -> Result<(), SanityCheckError> {
     }
 }
 
+/// Wrapper function around `git -C {path} status`.
+///
+/// ### Errors
+/// Returns `SanityCheckError::GitRepoFailure` when the directory is not a `git`
+/// repository - it's likely not been initialised. If an unexpected error
+/// occurs, `SanityCheckError::CheckFailure` is returned.
 pub(super) fn check_repo() -> Result<(), SanityCheckError> {
     let settings: Settings = crate::read_settings();
     let output = Command::new("git")
@@ -94,21 +126,21 @@ mod tests {
     #[test]
     fn check_git() {
         if let Err(e) = super::check_git() {
-            panic!("{}", e)
+            assert!(false, "{}", e)
         }
     }
 
     #[test]
     fn check_flatpak() {
         if let Err(e) = super::check_flatpak() {
-            panic!("{}", e)
+            assert!(false, "{}", e)
         }
     }
 
     #[test]
     fn check_repo() {
         if let Err(e) = super::check_repo() {
-            panic!("{}", e)
+            assert!(false, "{}", e)
         }
     }
 }
