@@ -153,13 +153,6 @@ mod tests {
         // `git::operations::_reset_hard()` for more information.
         git_reset_hard(&settings.path);
 
-        // We can allow the code to continue if we encounter an error when we
-        // delete the file from earlier - this way we're not preventing our
-        // stash from being restored. `git` might disagree with us though.
-        if let Err(_) = std::fs::remove_file("git_commit_test.txt") {
-            assert!(false, "Failed to delete file: `git_commit_test.txt`!")
-        }
-
         git_restore(&settings.path);
     }
 }
