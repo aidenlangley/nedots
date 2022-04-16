@@ -1,0 +1,46 @@
+{
+    "path": "/home/me/.nedots",
+    "root": [
+        "/etc/X11/xorg.conf.d/10-outputs.conf",
+        "/etc/X11/xorg.conf.d/20-inputs.conf"
+    ],
+    "user": [
+        ".bashrc",
+        ".config/alacritty",
+        ".gitconfig",
+        ".local/bin/i3lock",
+        ".nanorc",
+        ".profile",
+        ".Xresources",
+        ".xsettingsd"
+    ],
+    "packages": {
+        "core": {
+            "fedora": [
+                "alacritty",
+                "firefox",
+                "fish"
+            ]
+        },
+        "x11": {
+            "fedora": [
+                "bspwm",
+                "picom",
+                "polybar"
+            ]
+        },
+        "wayland": {
+            "fedora": []
+        },
+        "flatpak": [
+            {
+                "remote": "flathub",
+                "url": "https://flathub.org/repo/flathub.flatpakrepo",
+                "packages": [
+                    "com.spotify.Client",
+                    "org.gimp.GIMP"
+                ]
+            }
+        ]
+    }
+}

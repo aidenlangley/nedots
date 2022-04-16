@@ -29,6 +29,26 @@ struct Args {
     cmd: Option<Command>,
 }
 
+enum Verbosity {
+    Low,
+    Medium,
+    High,
+}
+
+impl Args {
+    pub fn debugging(&self) -> bool {
+        self.debug > 0
+    }
+
+    pub fn verbosity(&self) -> Verbosity {
+        match self.verbose {
+            1 => Verbosity::Low,
+            2 => Verbosity::Medium,
+            _ => Verbosity::High,
+        }
+    }
+}
+
 #[derive(Debug, Subcommand)]
 enum Command {
     #[clap(about = "Add changes to remote by commiting & pushing local changes \
@@ -67,7 +87,7 @@ enum Command {
     },
 }
 
-fn read_settings() -> Settings {
+fn read_settings(args: Args) -> Settings {
     match Settings::read() {
         Ok(s) => s,
         Err(e) => {
@@ -77,8 +97,9 @@ fn read_settings() -> Settings {
     }
 }
 
-fn add(settings: Settings) {
-    if let Err(_) = git::stash(&settings.path) {
+fn add(args: Args, settings: Settings) {
+    if let Err(e) = git::stash(&settings.path) {
+        println!("{}", e);
         std::process::exit(1)
     }
 
@@ -107,24 +128,20 @@ fn add(settings: Settings) {
         std::process::exit(1)
     }
 
-    if let Err(_) = git::add(&settings.path) {
-        std::process::exit(1)
-    }
-
-    if let Err(_) = git::commit(&settings.path) {
-        std::process::exit(1)
-    }
-
-    if let Err(_) = git::push(&settings.path) {
-        std::process::exit(1)
-    }
-
-    if let Err(_) = git::restore(&settings.path) {
-        std::process::exit(1)
+    for func in [
+        git::add(&settings.path),
+        git::commit(&settings.path),
+        git::push(&settings.path),
+        git::restore(&settings.path),
+    ] {
+        if let Err(e) = func {
+            println!("{}", e);
+            std::process::exit(1)
+        }
     }
 }
 
-fn install(distro: Option<Distro>, assume_yes: bool, cmd: &InstallCommand) {
+fn install(args: Args, distro: Option<Distro>, assume_yes: bool, cmd: &InstallCommand) {
     match cmd {
         InstallCommand::Core => todo!(),
         InstallCommand::X11 => todo!(),
@@ -143,7 +160,7 @@ fn install(distro: Option<Distro>, assume_yes: bool, cmd: &InstallCommand) {
 
 fn main() {
     let args = Args::parse();
-    let mut settings: Settings = read_settings();
+    let mut settings: Settings = read_settings(args);
 
     // If user has passed us a path, replace the value in settings with the path
     // provided.
@@ -160,17 +177,16 @@ fn main() {
                         std::process::exit(1)
                     }
 
-                    add(settings)
+                    add(args, settings)
                 }
                 Command::Install {
                     distro,
                     assume_yes,
                     cmd,
-                } => install(distro, assume_yes, &cmd),
+                } => install(args, distro, assume_yes, &cmd),
                 Command::Update { only, force } => todo!(),
                 Command::Check => todo!(),
             },
-            // Do nothing.
             None => (),
         },
     }
@@ -189,7 +205,7 @@ mod tests {
     #[test]
     fn read_settings() {
         if let Err(e) = Settings::read() {
-            panic!("{}", e);
+            assert!(false, "{}", e);
         }
     }
 }

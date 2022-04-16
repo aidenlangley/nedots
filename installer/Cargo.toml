@@ -1,7 +1,15 @@
 [package]
 edition = "2021"
 name = "nedots"
+description = "A small utility for managing configuration files & installing packages for Linux."
 version = "0.1.0"
+authors = [ "Aiden Langley <aiden@nedia.dev>" ]
+repository = "https://github.com/aidenlangley/nedots"
+documentation = "https://docs.rs/nedots"
+license = "MIT OR Apache-2.0"
+keywords = [ "dotfiles" ]
+categories = [ "command-line-utilities", "config" ]
+exclude = [ "nedots.json" ]
 
 [dependencies]
 clap = { version = "3.1.6", features = [ "derive", "env" ] }
