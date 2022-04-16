@@ -17,11 +17,11 @@ use std::{
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub(super) fn add(dest: &Path) -> Result<Output, GitError> {
+pub(super) fn add(path: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
             "-C",
-            dest.to_string_lossy().to_string().as_str(),
+            path.to_string_lossy().to_string().as_str(),
             "add",
             ".",
         ])
@@ -53,11 +53,11 @@ pub(super) fn add(dest: &Path) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub(super) fn commit(dest: &Path) -> Result<Output, GitError> {
+pub(super) fn commit(path: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
             "-C",
-            dest.to_string_lossy().to_string().as_str(),
+            path.to_string_lossy().to_string().as_str(),
             "commit",
             "-m",
         ])
@@ -90,9 +90,9 @@ pub(super) fn commit(dest: &Path) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub(super) fn push(dest: &Path) -> Result<Output, GitError> {
+pub(super) fn push(path: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
-        .args(["-C", dest.to_string_lossy().to_string().as_str(), "push"])
+        .args(["-C", path.to_string_lossy().to_string().as_str(), "push"])
         .output();
 
     match output {
@@ -124,11 +124,11 @@ pub(super) fn push(dest: &Path) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub(super) fn stash_push(dest: &Path) -> Result<Output, GitError> {
+pub(super) fn stash_push(path: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
             "-C",
-            dest.to_string_lossy().to_string().as_str(),
+            path.to_string_lossy().to_string().as_str(),
             "stash",
             "push",
         ])
@@ -163,11 +163,11 @@ pub(super) fn stash_push(dest: &Path) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub(super) fn stash_pop(dest: &Path) -> Result<Output, GitError> {
+pub(super) fn stash_pop(path: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
             "-C",
-            dest.to_string_lossy().to_string().as_str(),
+            path.to_string_lossy().to_string().as_str(),
             "stash",
             "pop",
         ])
@@ -191,6 +191,37 @@ pub(super) fn stash_pop(dest: &Path) -> Result<Output, GitError> {
     }
 }
 
+/// Wrapper function around the Command: `git pull`.
+///
+/// ### Errors
+/// Authentication errors throw `GitError::PullError`, or
+/// `GitError::Unknown` if the error is unrecognised.
+///
+/// ### Panics
+/// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
+pub(super) fn pull(path: &Path) -> Result<Output, GitError> {
+    let output = Command::new("git")
+        .args(["-C", path.to_string_lossy().to_string().as_str(), "pull"])
+        .output();
+
+    match output {
+        Ok(o) => {
+            if !o.status.success() {
+                std::io::stdout()
+                    .write_all(&o.stderr)
+                    .expect("Failed to write stderr from `git pull`!");
+                return Err(GitError::PullFailure);
+            }
+
+            std::io::stdout()
+                .write_all(&o.stdout)
+                .expect("Failed to write stdout from `git pull`!");
+            Ok(o)
+        }
+        Err(_) => Err(GitError::Unknown),
+    }
+}
+
 /// Wrapper function around the Command: `git rest --hard HEAD^`. Used in
 /// conjunction with `commit` to roll back our commit after testing.
 ///
@@ -204,11 +235,11 @@ pub(super) fn stash_pop(dest: &Path) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub(super) fn _reset_hard(dest: &Path) -> Result<Output, GitError> {
+pub(super) fn _reset_hard(path: &Path) -> Result<Output, GitError> {
     let output = Command::new("git")
         .args([
             "-C",
-            dest.to_string_lossy().to_string().as_str(),
+            path.to_string_lossy().to_string().as_str(),
             "reset",
             "--hard",
             "HEAD^",
@@ -220,13 +251,13 @@ pub(super) fn _reset_hard(dest: &Path) -> Result<Output, GitError> {
             if !o.status.success() {
                 std::io::stdout()
                     .write_all(&o.stderr)
-                    .expect("Failed to write stderr from `git revert`!");
-                return Err(GitError::_RevertFailure);
+                    .expect("Failed to write stderr from `git reset`!");
+                return Err(GitError::_ResetFailure);
             }
 
             std::io::stdout()
                 .write_all(&o.stdout)
-                .expect("Failed to write stdout from `git revert`!");
+                .expect("Failed to write stdout from `git reset`!");
             Ok(o)
         }
         Err(_) => Err(GitError::Unknown),

@@ -5,13 +5,15 @@ mod operations;
 
 use std::{fmt::Display, path::Path, process::Output};
 
+#[derive(Debug)]
 pub enum GitError {
     AddFailure,
     Conflict,
     AuthFailure,
     StashPushFailure,
     StashPopFailure,
-    _RevertFailure,
+    PullFailure,
+    _ResetFailure,
     Unknown,
 }
 
@@ -37,16 +39,22 @@ impl Display for GitError {
                 "Failed `git commit`, there are conflicting changes, please \
                 fix manually."
             ),
-            GitError::_RevertFailure => write!(
-                f,
-                "Failed `git revert`, the latest commit in the working tree is \
-                likely not supposed to be there."
-            ),
             GitError::AuthFailure => write!(
                 f,
                 "Failed `git push`, authentication failed when pushing to \
                 remote."
             ),
+            GitError::PullFailure => write!(
+                f,
+                "Failed `git pull`, latest changes have not been pulled from \
+                remote."
+            ),
+            GitError::_ResetFailure => write!(
+                f,
+                "Failed `git reset`, the latest commit in the working tree is \
+                likely not supposed to be there."
+            ),
+
             GitError::Unknown => write!(
                 f,
                 "An unknown error occured when attempting to perform a `git` \
@@ -56,28 +64,32 @@ impl Display for GitError {
     }
 }
 
-pub fn add(dest: &Path) -> Result<Output, GitError> {
-    operations::add(dest)
+pub fn add(path: &Path) -> Result<Output, GitError> {
+    operations::add(path)
 }
 
-pub fn commit(dest: &Path) -> Result<Output, GitError> {
-    operations::commit(dest)
+pub fn commit(path: &Path) -> Result<Output, GitError> {
+    operations::commit(path)
 }
 
-pub fn push(dest: &Path) -> Result<Output, GitError> {
-    operations::push(dest)
+pub fn push(path: &Path) -> Result<Output, GitError> {
+    operations::push(path)
 }
 
-pub fn stash(dest: &Path) -> Result<Output, GitError> {
-    operations::stash_push(dest)
+pub fn stash(path: &Path) -> Result<Output, GitError> {
+    operations::stash_push(path)
 }
 
-pub fn restore(dest: &Path) -> Result<Output, GitError> {
-    operations::stash_pop(dest)
+pub fn restore(path: &Path) -> Result<Output, GitError> {
+    operations::stash_pop(path)
 }
 
-fn _reset_hard(dest: &Path) -> Result<Output, GitError> {
-    operations::_reset_hard(dest)
+pub fn pull(path: &Path) -> Result<Output, GitError> {
+    operations::pull(path)
+}
+
+fn _reset_hard(path: &Path) -> Result<Output, GitError> {
+    operations::_reset_hard(path)
 }
 
 #[cfg(test)]
@@ -139,7 +151,7 @@ mod tests {
     /// When the test fails to create necessary files for testing the `git`
     /// operations.
     fn all_ops() {
-        let settings: Settings = match Settings::read() {
+        let settings = match Settings::read() {
             Ok(s) => s,
             Err(e) => panic!("{}", e),
         };

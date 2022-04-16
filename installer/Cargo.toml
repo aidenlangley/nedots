@@ -1,19 +1,22 @@
 [package]
-edition = "2021"
-name = "nedots"
-description = "A small utility for managing configuration files & installing packages for Linux."
-version = "0.1.0"
 authors = [ "Aiden Langley <aiden@nedia.dev>" ]
-repository = "https://github.com/aidenlangley/nedots"
-documentation = "https://docs.rs/nedots"
-license = "MIT OR Apache-2.0"
-keywords = [ "dotfiles" ]
 categories = [ "command-line-utilities", "config" ]
+description = "A small utility for managing configuration files & installing packages for Linux."
+documentation = "https://docs.rs/nedots"
+edition = "2021"
 exclude = [ "nedots.json" ]
+keywords = [ "dotfiles" ]
+license = "MIT OR Apache-2.0"
+name = "nedots"
+repository = "https://github.com/aidenlangley/nedots"
+version = "0.1.0"
 
 [dependencies]
+chrono = "0.4"
 clap = { version = "3.1.6", features = [ "derive", "env" ] }
+console = "0.15"
+dialoguer = "0.10"
+indicatif = "0.16"
+nix = "0.23"
 serde = { version = "1.0", features = [ "derive" ] }
 serde_json = "1.0"
-nix = "0.23"
-chrono = "0.4"

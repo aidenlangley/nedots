@@ -8,10 +8,10 @@
 //! Functions within this module are only shared with `super`, since other
 //! operations do not need to concern themselves with `sanity_checks`.
 
-use crate::settings::Settings;
-use std::{fmt::Display, io::Write, process::Command};
+use std::{fmt::Display, io::Write, path::Path, process::Command};
 
 /// Error types returned when performing sanity checks.
+#[derive(Debug)]
 pub enum SanityCheckError {
     CheckFailure { check: &'static str },
     GitMissing,
@@ -89,18 +89,9 @@ pub(super) fn check_flatpak() -> Result<(), SanityCheckError> {
 /// Returns `SanityCheckError::GitRepoFailure` when the directory is not a `git`
 /// repository - it's likely not been initialised. If an unexpected error
 /// occurs, `SanityCheckError::CheckFailure` is returned.
-pub(super) fn check_repo() -> Result<(), SanityCheckError> {
-    let settings: Settings = match Settings::read() {
-        Ok(s) => s,
-        Err(e) => panic!("{}", e),
-    };
-
+pub(super) fn check_repo(path: &Path) -> Result<(), SanityCheckError> {
     let output = Command::new("git")
-        .args([
-            "-C",
-            settings.path.to_string_lossy().to_string().as_str(),
-            "status",
-        ])
+        .args(["-C", path.to_string_lossy().to_string().as_str(), "status"])
         .output();
 
     match output {
@@ -123,6 +114,8 @@ pub(super) fn check_repo() -> Result<(), SanityCheckError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::settings::Settings;
+
     #[test]
     fn check_git() {
         if let Err(e) = super::check_git() {
@@ -139,7 +132,12 @@ mod tests {
 
     #[test]
     fn check_repo() {
-        if let Err(e) = super::check_repo() {
+        let settings = match Settings::read() {
+            Ok(s) => s,
+            Err(e) => panic!("{}", e),
+        };
+
+        if let Err(e) = super::check_repo(&settings.path) {
             assert!(false, "{}", e)
         }
     }

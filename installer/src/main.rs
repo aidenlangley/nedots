@@ -1,54 +1,17 @@
+mod args;
 mod git;
 mod install;
 mod sanity_checks;
 mod settings;
 mod utils;
 
-use clap::{Parser, Subcommand};
+use args::{Args, Verbosity};
+use clap::{StructOpt, Subcommand};
 use install::{Distro, InstallCommand};
 use nix::unistd::Uid;
 use settings::Settings;
 use std::path::PathBuf;
 use utils::CopyOperation;
-
-#[derive(Debug, Parser)]
-#[clap(about = "Tool for installing & managing ne/any-dots.")]
-#[clap(version, arg_required_else_help(true))]
-struct Args {
-    #[clap(short, long, parse(from_occurrences))]
-    debug: usize,
-
-    #[clap(short, long, parse(from_occurrences))]
-    verbose: usize,
-
-    #[clap(short, long)]
-    #[clap(help = "Path of nedots data directory")]
-    path: Option<String>,
-
-    #[clap(subcommand)]
-    cmd: Option<Command>,
-}
-
-#[derive(Debug)]
-enum Verbosity {
-    Low,
-    Medium,
-    High,
-}
-
-impl Args {
-    pub fn debugging(&self) -> bool {
-        self.debug > 0
-    }
-
-    pub fn verbosity(&self) -> Verbosity {
-        match self.verbose {
-            1 => Verbosity::Low,
-            2 => Verbosity::Medium,
-            _ => Verbosity::High,
-        }
-    }
-}
 
 #[derive(Debug, Subcommand)]
 enum Command {
@@ -88,9 +51,24 @@ enum Command {
     },
 }
 
-fn read_settings(debug: bool, verbosity: &Verbosity) -> Settings {
+/// Checks verbosity and then print to terminal.
+fn printv(msg: &str, debug: bool, verbosity: Verbosity) {
+    if debug || verbosity == Verbosity::High {
+        println!("{}", msg)
+    }
+}
+
+fn read_settings(debug: bool, verbosity: Verbosity) -> Settings {
+    printv("Reading settings", debug, verbosity);
+
     match Settings::read() {
-        Ok(s) => s,
+        Ok(s) => {
+            if debug {
+                println!("{:#?}", s)
+            }
+
+            s
+        }
         Err(e) => {
             println!("{}", e);
             std::process::exit(1)
@@ -98,42 +76,95 @@ fn read_settings(debug: bool, verbosity: &Verbosity) -> Settings {
     }
 }
 
-fn add(debug: bool, verbosity: &Verbosity, settings: Settings) {
-    if let Err(e) = sanity_checks::check_git() {
-        println!("{}", e);
-        std::process::exit(1)
+fn sanity_check_git(debug: bool, verbosity: Verbosity, settings: &Settings) {
+    printv("Performing a sanity check on `git`", debug, verbosity);
+    match sanity_checks::check_git() {
+        Ok(r) => {
+            if debug {
+                println!("{:#?}", r);
+            }
+
+            r
+        }
+        Err(e) => {
+            if debug {
+                println!("{:#?}", e);
+            } else {
+                println!("{}", e);
+            }
+
+            std::process::exit(1)
+        }
     }
 
+    printv(
+        "Checking if the `git` repo is initialised and ready",
+        debug,
+        verbosity,
+    );
+    if let Err(e) = sanity_checks::check_repo(&settings.path) {
+        if debug {
+            println!("{:#?}", e);
+        } else {
+            println!("{}", e);
+        }
+
+        std::process::exit(1)
+    }
+}
+
+fn add(debug: bool, verbosity: Verbosity, settings: Settings) {
+    // First, check everything is right with `git` on the system.
+    sanity_check_git(debug, verbosity, &settings);
+
+    printv("Stashing working `git` tree", debug, verbosity);
     if let Err(e) = git::stash(&settings.path) {
-        println!("{}", e);
+        if debug {
+            println!("{:#?}", e);
+        } else {
+            println!("{}", e);
+        }
+
         std::process::exit(1)
     }
 
     if Uid::effective().is_root() {
+        printv("Beginning a CopyOperation as root", debug, verbosity);
         let mut copy_op = CopyOperation::new(settings.root);
         match copy_op.copy_to(&settings.path) {
             Ok(_) => println!("{:#?}", copy_op.results),
             Err(e) => {
-                println!("{}", e);
+                if debug {
+                    println!("{:#?}", e);
+                } else {
+                    println!("{}", e);
+                }
+
                 std::process::exit(1)
             }
         }
     }
 
+    printv("Beginning a CopyOperation", debug, verbosity);
     let mut copy_op = CopyOperation::new(settings.user);
     match copy_op.copy_to(&settings.path) {
         Ok(_) => println!("{:#?}", copy_op.results),
         Err(e) => {
-            println!("{}", e);
+            if debug {
+                println!("{:#?}", e);
+            } else {
+                println!("{}", e);
+            }
+
             std::process::exit(1)
         }
     }
 
-    if let Err(e) = sanity_checks::check_repo() {
-        println!("{}", e);
-        std::process::exit(1)
-    }
-
+    printv(
+        "Performing `git` operations: `add`, `commit`, `push`, `restore`, in that order",
+        debug,
+        verbosity,
+    );
     for func in [
         git::add(&settings.path),
         git::commit(&settings.path),
@@ -141,15 +172,58 @@ fn add(debug: bool, verbosity: &Verbosity, settings: Settings) {
         git::restore(&settings.path),
     ] {
         if let Err(e) = func {
-            println!("{}", e);
+            if debug {
+                println!("{:#?}", e);
+            } else {
+                println!("{}", e);
+            }
+
             std::process::exit(1)
         }
     }
 }
 
+fn update(debug: bool, verbosity: Verbosity, settings: Settings) {
+    // As with `add`, check everything is right with `git` on the system.
+    sanity_check_git(debug, verbosity, &settings);
+
+    printv("Stashing working `git` tree", debug, verbosity);
+    if let Err(e) = git::stash(&settings.path) {
+        if debug {
+            println!("{:#?}", e);
+        } else {
+            println!("{}", e);
+        }
+
+        std::process::exit(1)
+    }
+
+    printv("Stashing working `git` tree", debug, verbosity);
+    if let Err(e) = git::stash(&settings.path) {
+        if debug {
+            println!("{:#?}", e);
+        } else {
+            println!("{}", e);
+        }
+
+        std::process::exit(1)
+    }
+
+    printv("Pulling latest changes from remote", debug, verbosity);
+    if let Err(e) = git::pull(&settings.path) {
+        if debug {
+            println!("{:#?}", e);
+        } else {
+            println!("{}", e);
+        }
+
+        std::process::exit(1)
+    }
+}
+
 fn install(
     debug: bool,
-    verbosity: &Verbosity,
+    verbosity: Verbosity,
     distro: Option<Distro>,
     assume_yes: bool,
     cmd: &InstallCommand,
@@ -160,7 +234,12 @@ fn install(
         InstallCommand::Wayland => todo!(),
         InstallCommand::Flatpaks => {
             if let Err(e) = sanity_checks::check_flatpak() {
-                println!("{}", e);
+                if debug {
+                    println!("{:#?}", e);
+                } else {
+                    println!("{}", e);
+                }
+
                 std::process::exit(1)
             }
 
@@ -173,29 +252,40 @@ fn install(
 fn main() {
     let args = Args::parse();
     let debug = args.debugging();
-    let verbosity = args.verbosity();
-    let mut settings: Settings = read_settings(debug, &verbosity);
+    let verbosity = args.get_verbosity();
+
+    if debug {
+        println!("Debugging enabled");
+        println!("Args: {:#?}", args);
+
+        if let Some(v) = verbosity {
+            println!("Verbosity set: {:#?}", v);
+        }
+    }
+
+    let mut settings = read_settings(debug, verbosity.unwrap());
 
     // If user has passed us a path, replace the value in settings with the path
     // provided.
     if let Some(p) = args.path {
+        printv(
+            "A path was provided by caller, replacing settings.path with \
+            value provided by the user.",
+            debug,
+            verbosity.unwrap(),
+        );
         settings.path = PathBuf::from(p);
     }
 
     match args.cmd {
-        cmd => match cmd {
-            Some(sub_cmd) => match sub_cmd {
-                Command::Add => add(debug, &verbosity, settings),
-                Command::Install {
-                    distro,
-                    assume_yes,
-                    cmd,
-                } => install(debug, &verbosity, distro, assume_yes, &cmd),
-                Command::Update { only, force } => todo!(),
-                Command::Check => todo!(),
-            },
-            None => (),
-        },
+        Command::Add => add(debug, verbosity.unwrap(), settings),
+        Command::Update { only, force } => todo!(),
+        Command::Check => todo!(),
+        Command::Install {
+            distro,
+            assume_yes,
+            cmd,
+        } => install(debug, verbosity.unwrap(), distro, assume_yes, &cmd),
     }
 }
 
