@@ -1,73 +1,91 @@
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{fmt::Display, fs::File, path::PathBuf};
 
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct Settings {
-    pub(crate) path: PathBuf,
-    pub(crate) root: Vec<PathBuf>,
-    pub(crate) user: Vec<PathBuf>,
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct Settings {
+    pub path: PathBuf,
+    pub root: Vec<PathBuf>,
+    pub user: Vec<PathBuf>,
     #[serde(rename = "packages")]
-    pub(crate) pkgs: Packages,
+    pub pkgs: Packages,
 }
 
-impl Settings {
-    pub(crate) fn new() -> Result<Self, &'static str> {
-        let settings_file: fs::File;
-        match fs::File::open("nedots.json") {
-            Ok(f) => settings_file = f,
-            Err(_) => return Err("Could not open file, file does not exist."),
-        }
+pub enum SettingsError {
+    FileOpenError(std::io::Error),
+    DeserializeError(String),
+}
 
-        let settings: Self;
-        match serde_json::from_reader(settings_file) {
-            Ok(s) => settings = s,
-            Err(_) => return Err("Failed to serialize settings file."),
+impl Display for SettingsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SettingsError::FileOpenError(e) => write!(f, "{}", e),
+            SettingsError::DeserializeError(s) => write!(
+                f,
+                "Failed to deserialize `nedots.json` into `Settings` struct: {}",
+                s
+            ),
         }
-
-        Ok(settings)
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct Packages {
+impl Settings {
+    pub(super) fn read() -> Result<Self, SettingsError> {
+        let settings_file = match File::open("nedots.json") {
+            Ok(f) => f,
+            Err(e) => return Err(SettingsError::FileOpenError(e)),
+        };
+
+        match serde_json::from_reader(settings_file) {
+            Ok(s) => Ok(s),
+            Err(e) => Err(SettingsError::DeserializeError(e.to_string())),
+        }
+    }
+
+    pub(super) fn _write(&self) -> std::io::Result<Self> {
+        todo!() // Serialize struct to JSON -> write JSON to file.
+    }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct Packages {
     #[serde(rename = "core")]
-    pub(crate) core_pkgs: CorePackages,
+    pub core_pkgs: CorePackages,
     #[serde(rename = "x11")]
-    pub(crate) x11_pkgs: X11Packages,
+    pub x11_pkgs: X11Packages,
     #[serde(rename = "wayland")]
-    pub(crate) wayland_pkgs: WaylandPackages,
+    pub wayland_pkgs: WaylandPackages,
     #[serde(rename = "flatpak")]
-    pub(crate) flatpaks: Vec<FlatpakRemote>,
+    pub flatpaks: Vec<FlatpakRemote>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename = "core")]
-pub(crate) struct CorePackages {
+pub struct CorePackages {
     #[serde(rename = "fedora")]
-    pub(crate) fedora_pkgs: Vec<String>,
+    pub fedora_pkgs: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename = "x11")]
-pub(crate) struct X11Packages {
+pub struct X11Packages {
     #[serde(rename = "fedora")]
-    pub(crate) fedora_pkgs: Vec<String>,
+    pub fedora_pkgs: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename = "wayland")]
-pub(crate) struct WaylandPackages {
+pub struct WaylandPackages {
     #[serde(rename = "fedora")]
-    pub(crate) fedora_pkgs: Vec<String>,
+    pub fedora_pkgs: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename = "flatpak")]
-pub(crate) struct FlatpakRemote {
-    pub(crate) remote: String,
-    pub(crate) url: String,
+pub struct FlatpakRemote {
+    pub remote: String,
+    pub url: String,
     #[serde(rename = "packages")]
-    pub(crate) pkgs: Vec<String>,
+    pub pkgs: Vec<String>,
 }
 
 #[cfg(test)]
@@ -135,7 +153,7 @@ mod tests {
     #[test]
     fn deserialize() {
         if let Err(e) = deserialize_test_data() {
-            panic!("{}", e);
+            assert!(false, "{}", e)
         }
     }
 
@@ -144,10 +162,10 @@ mod tests {
         match deserialize_test_data() {
             Ok(s) => {
                 if let Err(e) = serde_json::to_string::<Settings>(&s) {
-                    panic!("{}", e);
+                    assert!(false, "{}", e)
                 }
             }
-            Err(e) => panic!("{}", e),
+            Err(e) => assert!(false, "{}", e),
         }
     }
 }
