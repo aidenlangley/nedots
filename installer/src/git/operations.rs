@@ -61,7 +61,7 @@ pub(super) fn commit(dest: &Path) -> Result<Output, GitError> {
             "commit",
             "-m",
         ])
-        .arg(format!("'Latest ({})'", Local::now()))
+        .arg(format!("Latest ({})", Local::now()))
         .output();
 
     match output {
