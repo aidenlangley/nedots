@@ -68,7 +68,7 @@ enum Command {
 }
 
 fn read_settings() -> Settings {
-    match Settings::new() {
+    match Settings::read() {
         Ok(s) => s,
         Err(e) => {
             println!("{}", e);
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn read_settings() {
-        if let Err(e) = Settings::new() {
+        if let Err(e) = Settings::read() {
             panic!("{}", e);
         }
     }

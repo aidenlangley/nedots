@@ -9,11 +9,7 @@
 //! operations do not need to concern themselves with `sanity_checks`.
 
 use crate::settings::Settings;
-use std::{
-    fmt::Display,
-    io::{stdout, Write},
-    process::Command,
-};
+use std::{fmt::Display, io::Write, process::Command};
 
 /// Error types returned when performing sanity checks.
 pub enum SanityCheckError {
@@ -106,13 +102,13 @@ pub(super) fn check_repo() -> Result<(), SanityCheckError> {
     match output {
         Ok(o) => {
             if !o.status.success() {
-                stdout()
+                std::io::stdout()
                     .write_all(&o.stderr)
                     .expect("Failed to write stderr from `git status`!");
                 return Err(SanityCheckError::GitRepoFailure);
             }
 
-            stdout()
+            std::io::stdout()
                 .write_all(&o.stdout)
                 .expect("Failed to write stdout from `git status`!");
             Ok(())
