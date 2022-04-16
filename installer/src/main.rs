@@ -29,6 +29,7 @@ struct Args {
     cmd: Option<Command>,
 }
 
+#[derive(Debug)]
 enum Verbosity {
     Low,
     Medium,
@@ -87,7 +88,7 @@ enum Command {
     },
 }
 
-fn read_settings(args: Args) -> Settings {
+fn read_settings(debug: bool, verbosity: &Verbosity) -> Settings {
     match Settings::read() {
         Ok(s) => s,
         Err(e) => {
@@ -97,7 +98,12 @@ fn read_settings(args: Args) -> Settings {
     }
 }
 
-fn add(args: Args, settings: Settings) {
+fn add(debug: bool, verbosity: &Verbosity, settings: Settings) {
+    if let Err(e) = sanity_checks::check_git() {
+        println!("{}", e);
+        std::process::exit(1)
+    }
+
     if let Err(e) = git::stash(&settings.path) {
         println!("{}", e);
         std::process::exit(1)
@@ -141,7 +147,13 @@ fn add(args: Args, settings: Settings) {
     }
 }
 
-fn install(args: Args, distro: Option<Distro>, assume_yes: bool, cmd: &InstallCommand) {
+fn install(
+    debug: bool,
+    verbosity: &Verbosity,
+    distro: Option<Distro>,
+    assume_yes: bool,
+    cmd: &InstallCommand,
+) {
     match cmd {
         InstallCommand::Core => todo!(),
         InstallCommand::X11 => todo!(),
@@ -160,7 +172,9 @@ fn install(args: Args, distro: Option<Distro>, assume_yes: bool, cmd: &InstallCo
 
 fn main() {
     let args = Args::parse();
-    let mut settings: Settings = read_settings(args);
+    let debug = args.debugging();
+    let verbosity = args.verbosity();
+    let mut settings: Settings = read_settings(debug, &verbosity);
 
     // If user has passed us a path, replace the value in settings with the path
     // provided.
@@ -171,19 +185,12 @@ fn main() {
     match args.cmd {
         cmd => match cmd {
             Some(sub_cmd) => match sub_cmd {
-                Command::Add => {
-                    if let Err(e) = sanity_checks::check_git() {
-                        println!("{}", e);
-                        std::process::exit(1)
-                    }
-
-                    add(args, settings)
-                }
+                Command::Add => add(debug, &verbosity, settings),
                 Command::Install {
                     distro,
                     assume_yes,
                     cmd,
-                } => install(args, distro, assume_yes, &cmd),
+                } => install(debug, &verbosity, distro, assume_yes, &cmd),
                 Command::Update { only, force } => todo!(),
                 Command::Check => todo!(),
             },

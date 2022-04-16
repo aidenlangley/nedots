@@ -139,7 +139,11 @@ mod tests {
     /// When the test fails to create necessary files for testing the `git`
     /// operations.
     fn all_ops() {
-        let settings: Settings = crate::read_settings();
+        let settings: Settings = match Settings::read() {
+            Ok(s) => s,
+            Err(e) => panic!("{}", e),
+        };
+
         git_stash(&settings.path);
 
         // Since we've stashed our work, our working tree would be empty (clean)

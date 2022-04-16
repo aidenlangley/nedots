@@ -90,7 +90,11 @@ pub(super) fn check_flatpak() -> Result<(), SanityCheckError> {
 /// repository - it's likely not been initialised. If an unexpected error
 /// occurs, `SanityCheckError::CheckFailure` is returned.
 pub(super) fn check_repo() -> Result<(), SanityCheckError> {
-    let settings: Settings = crate::read_settings();
+    let settings: Settings = match Settings::read() {
+        Ok(s) => s,
+        Err(e) => panic!("{}", e),
+    };
+
     let output = Command::new("git")
         .args([
             "-C",
