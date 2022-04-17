@@ -10,6 +10,7 @@ pub struct Settings {
     pub pkgs: Packages,
 }
 
+#[derive(Debug)]
 pub enum SettingsError {
     FileOpenError(std::io::Error),
     DeserializeError(String),

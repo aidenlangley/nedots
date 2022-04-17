@@ -1,4 +1,3 @@
-use clap::Subcommand;
 use std::str::FromStr;
 
 #[derive(Debug)]
@@ -40,21 +39,6 @@ impl From<Distro> for String {
     }
 }
 
-#[derive(Debug, Subcommand)]
-pub(crate) enum InstallCommand {
-    Core,
-    X11,
-    Wayland,
-    Flatpaks,
-    Dots,
-}
-
-pub(crate) struct InstallOperation {
-    cmd: InstallCommand,
-    distro: Distro,
-    results: Vec<Result<&'static str, &'static str>>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::Distro;
@@ -62,13 +46,14 @@ mod tests {
     #[test]
     fn distro_from_valid_string() {
         if let Err(e) = Distro::try_from(String::from("fedora")) {
-            panic!("{}", e)
+            assert!(false, "{}", e)
         }
     }
 
     #[test]
     fn distro_from_invalid_string() {
-        Distro::try_from(String::from("some_rando_distro"))
-            .expect_err("some_rando_distro is an invalid Distro, try_from should not succeed.");
+        if let Err(e) = Distro::try_from(String::from("some_rando_distro")) {
+            assert!(false, "")
+        }
     }
 }

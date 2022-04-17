@@ -1,291 +1,98 @@
-mod args;
+mod cli;
+mod copy;
 mod git;
 mod install;
-mod sanity_checks;
 mod settings;
-mod utils;
 
-use args::{Args, Verbosity};
-use clap::{StructOpt, Subcommand};
-use install::{Distro, InstallCommand};
+pub mod logger;
+pub mod proc;
+
+use clap::StructOpt;
+use cli::{Args, Command, Verbosity};
+use copy::CopyOperation;
+use logger::Logger;
 use nix::unistd::Uid;
 use settings::Settings;
 use std::path::PathBuf;
-use utils::CopyOperation;
 
-#[derive(Debug, Subcommand)]
-enum Command {
-    #[clap(about = "Add changes to remote by commiting & pushing local changes \
-    to git repository. Conflicts are reported on, and it's expected that \
-    you handle them manually.")]
-    Add,
+fn add(settings: Settings, logger: &Logger) {
+    if let Err(e) = crate::git::stash(&settings.path, logger) {
+        logger.println(None, &format!("{:#?}", e));
+        eprintln!("{}", e);
+        std::process::exit(1)
+    }
 
-    #[clap(about = "Update config files by pulling changes from remote & \
-    applying them locally. If files have been modified more recently than \
-    the latest remote changes, this operation will stop. Overwrite any \
-    local changes with --force/-f.")]
-    Update {
-        #[clap(short, long)]
-        #[clap(help = "Only update the folders specified.")]
-        only: Option<Vec<String>>,
+    if Uid::effective().is_root() {
+        let mut copy_op = CopyOperation::new(settings.root);
+        match copy_op.copy_to(&settings.path) {
+            Ok(_) => logger.println(Some(Verbosity::Medium), &format!("{:#?}", copy_op.results)),
+            Err(e) => {
+                logger.println(None, &format!("{:#?}", e));
+                eprintln!("{}", e);
+                std::process::exit(1)
+            }
+        }
+    }
 
-        #[clap(long, parse(try_from_str))]
-        #[clap(help = "Overwrite local files.")]
-        force: bool,
-    },
+    let mut copy_op = CopyOperation::new(settings.user);
+    match copy_op.copy_to(&settings.path) {
+        Ok(_) => println!("{:#?}", copy_op.results),
+        Err(e) => {
+            logger.println(None, &format!("{:#?}", e));
+            eprintln!("{}", e);
+            std::process::exit(1)
+        }
+    }
 
-    #[clap(about = "Fancy way to git fetch to check for remote changes.")]
-    Check,
-
-    #[clap(about = "Install packages, configs & perform misc. install \
-    operations.")]
-    Install {
-        #[clap(short, long)]
-        distro: Option<Distro>,
-
-        #[clap(short = 'y', long = "assumeyes")]
-        assume_yes: bool,
-
-        #[clap(subcommand)]
-        cmd: install::InstallCommand,
-    },
-}
-
-/// Checks verbosity and then print to terminal.
-fn printv(msg: &str, debug: bool, verbosity: Verbosity) {
-    if debug || verbosity == Verbosity::High {
-        println!("{}", msg)
+    for func in [
+        crate::git::add(&settings.path, logger),
+        crate::git::commit(&settings.path, logger),
+        crate::git::push(&settings.path, logger),
+        crate::git::restore(&settings.path, logger),
+    ] {
+        if let Err(e) = func {
+            logger.println(None, &format!("{:#?}", e));
+            eprintln!("{}", e);
+            std::process::exit(1)
+        }
     }
 }
 
-fn read_settings(debug: bool, verbosity: Verbosity) -> Settings {
-    printv("Reading settings", debug, verbosity);
+fn update(settings: Settings, logger: &Logger, only: Option<Vec<String>>, force: bool) {}
 
-    match Settings::read() {
+fn main() {
+    let args = Args::parse();
+    let debugging = args.debugging();
+    let verbosity = args.get_verbosity();
+    let logger = Logger::new(debugging, verbosity);
+
+    logger.println(None, &format!("Args: {:#?}", args));
+    if let Some(v) = verbosity {
+        logger.println(None, &format!("Verbosity: {:#?}", v));
+    }
+
+    let mut settings = match Settings::read() {
         Ok(s) => {
-            if debug {
-                println!("{:#?}", s)
-            }
-
+            logger.println(None, &format!("{:#?}", s));
             s
         }
         Err(e) => {
             println!("{}", e);
             std::process::exit(1)
         }
-    }
-}
+    };
+    logger.println(None, &format!("{:#?}", settings));
 
-fn sanity_check_git(debug: bool, verbosity: Verbosity, settings: &Settings) {
-    printv("Performing a sanity check on `git`", debug, verbosity);
-    match sanity_checks::check_git() {
-        Ok(r) => {
-            if debug {
-                println!("{:#?}", r);
-            }
-
-            r
-        }
-        Err(e) => {
-            if debug {
-                println!("{:#?}", e);
-            } else {
-                println!("{}", e);
-            }
-
-            std::process::exit(1)
-        }
-    }
-
-    printv(
-        "Checking if the `git` repo is initialised and ready",
-        debug,
-        verbosity,
-    );
-    if let Err(e) = sanity_checks::check_repo(&settings.path) {
-        if debug {
-            println!("{:#?}", e);
-        } else {
-            println!("{}", e);
-        }
-
-        std::process::exit(1)
-    }
-}
-
-fn add(debug: bool, verbosity: Verbosity, settings: Settings) {
-    // First, check everything is right with `git` on the system.
-    sanity_check_git(debug, verbosity, &settings);
-
-    printv("Stashing working `git` tree", debug, verbosity);
-    if let Err(e) = git::stash(&settings.path) {
-        if debug {
-            println!("{:#?}", e);
-        } else {
-            println!("{}", e);
-        }
-
-        std::process::exit(1)
-    }
-
-    if Uid::effective().is_root() {
-        printv("Beginning a CopyOperation as root", debug, verbosity);
-        let mut copy_op = CopyOperation::new(settings.root);
-        match copy_op.copy_to(&settings.path) {
-            Ok(_) => println!("{:#?}", copy_op.results),
-            Err(e) => {
-                if debug {
-                    println!("{:#?}", e);
-                } else {
-                    println!("{}", e);
-                }
-
-                std::process::exit(1)
-            }
-        }
-    }
-
-    printv("Beginning a CopyOperation", debug, verbosity);
-    let mut copy_op = CopyOperation::new(settings.user);
-    match copy_op.copy_to(&settings.path) {
-        Ok(_) => println!("{:#?}", copy_op.results),
-        Err(e) => {
-            if debug {
-                println!("{:#?}", e);
-            } else {
-                println!("{}", e);
-            }
-
-            std::process::exit(1)
-        }
-    }
-
-    printv(
-        "Performing `git` operations: `add`, `commit`, `push`, `restore`, in that order",
-        debug,
-        verbosity,
-    );
-    for func in [
-        git::add(&settings.path),
-        git::commit(&settings.path),
-        git::push(&settings.path),
-        git::restore(&settings.path),
-    ] {
-        if let Err(e) = func {
-            if debug {
-                println!("{:#?}", e);
-            } else {
-                println!("{}", e);
-            }
-
-            std::process::exit(1)
-        }
-    }
-}
-
-fn update(debug: bool, verbosity: Verbosity, settings: Settings) {
-    // As with `add`, check everything is right with `git` on the system.
-    sanity_check_git(debug, verbosity, &settings);
-
-    printv("Stashing working `git` tree", debug, verbosity);
-    if let Err(e) = git::stash(&settings.path) {
-        if debug {
-            println!("{:#?}", e);
-        } else {
-            println!("{}", e);
-        }
-
-        std::process::exit(1)
-    }
-
-    printv("Stashing working `git` tree", debug, verbosity);
-    if let Err(e) = git::stash(&settings.path) {
-        if debug {
-            println!("{:#?}", e);
-        } else {
-            println!("{}", e);
-        }
-
-        std::process::exit(1)
-    }
-
-    printv("Pulling latest changes from remote", debug, verbosity);
-    if let Err(e) = git::pull(&settings.path) {
-        if debug {
-            println!("{:#?}", e);
-        } else {
-            println!("{}", e);
-        }
-
-        std::process::exit(1)
-    }
-}
-
-fn install(
-    debug: bool,
-    verbosity: Verbosity,
-    distro: Option<Distro>,
-    assume_yes: bool,
-    cmd: &InstallCommand,
-) {
-    match cmd {
-        InstallCommand::Core => todo!(),
-        InstallCommand::X11 => todo!(),
-        InstallCommand::Wayland => todo!(),
-        InstallCommand::Flatpaks => {
-            if let Err(e) = sanity_checks::check_flatpak() {
-                if debug {
-                    println!("{:#?}", e);
-                } else {
-                    println!("{}", e);
-                }
-
-                std::process::exit(1)
-            }
-
-            todo!()
-        }
-        InstallCommand::Dots => todo!(),
-    }
-}
-
-fn main() {
-    let args = Args::parse();
-    let debug = args.debugging();
-    let verbosity = args.get_verbosity();
-
-    if debug {
-        println!("Debugging enabled");
-        println!("Args: {:#?}", args);
-
-        if let Some(v) = verbosity {
-            println!("Verbosity set: {:#?}", v);
-        }
-    }
-
-    let mut settings = read_settings(debug, verbosity.unwrap());
-
-    // If user has passed us a path, replace the value in settings with the path
-    // provided.
+    // If user has passed us a path, replace `settings.path`.
     if let Some(p) = args.path {
-        printv(
-            "A path was provided by caller, replacing settings.path with \
-            value provided by the user.",
-            debug,
-            verbosity.unwrap(),
-        );
         settings.path = PathBuf::from(p);
+        logger.println(None, &format!("{:#?}", settings.path));
     }
 
     match args.cmd {
-        Command::Add => add(debug, verbosity.unwrap(), settings),
-        Command::Update { only, force } => todo!(),
-        Command::Check => todo!(),
-        Command::Install {
-            distro,
-            assume_yes,
-            cmd,
-        } => install(debug, verbosity.unwrap(), distro, assume_yes, &cmd),
+        Command::Add => add(settings, &logger),
+        Command::Update { only, force } => update(settings, &logger, only, force),
+        _ => todo!(),
     }
 }
 
