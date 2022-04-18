@@ -54,11 +54,20 @@ pub trait RunProcess<R, E>: Run<R, E> {
             .output()
         {
             Ok(o) => {
+                // Print the output from stdout pretty much all of the time.
                 proc.logger().write_buf(proc.min_verbosity(), &o.stdout);
+
+                // Print the prog name, and args when debugging, or when
+                // `Verbosity::High`.
                 proc.logger().println(
                     Some(Verbosity::High),
-                    &format!("{} status: {:#?}", proc.prog(), o.status),
+                    &format!("{:#?}: {:#?}", proc.prog(), proc.args()),
                 );
+
+                // Print the Output status when debugging or when `Verbosity::High`.
+                proc.logger()
+                    .println(Some(Verbosity::High), &format!("status: {:#?}", o.status));
+
                 Ok(o)
             }
             Err(_) => panic!("Failed to run `{}`! Is it installed?", proc.prog()),

@@ -386,7 +386,7 @@ mod tests {
     fn git_add(path: &Path, logger: &Logger) {
         let git_add = super::add(path, &logger);
         match git_add {
-            Ok(o) => assert!(o.status.success()),
+            Ok(o) => assert!(o.status.success(), "`git add` status: {}", o.status),
             Err(e) => assert!(false, "{}", e),
         }
     }
