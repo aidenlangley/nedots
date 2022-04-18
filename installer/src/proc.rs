@@ -55,6 +55,10 @@ pub trait RunProcess<R, E>: Run<R, E> {
         {
             Ok(o) => {
                 proc.logger().write_buf(proc.min_verbosity(), &o.stdout);
+                proc.logger().println(
+                    Some(Verbosity::High),
+                    &format!("{} status: {:#?}", proc.prog(), o.status),
+                );
                 Ok(o)
             }
             Err(_) => panic!("Failed to run `{}`! Is it installed?", proc.prog()),
