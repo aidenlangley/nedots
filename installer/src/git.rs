@@ -237,7 +237,7 @@ pub fn stash(path: &Path, logger: &Logger) -> Result<Output, GitError> {
     match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
-            if status.success() {
+            if !status.success() {
                 if let Some(c) = status.code() {
                     match c {
                         _ => return Err(GitError::StashPushFailure),
