@@ -101,7 +101,9 @@ impl RunProcess<Output, GitError> for Process {
         if let Some(v) = proc.logger().verbosity {
             if let Some(mv) = proc.min_verbosity() {
                 if !proc.logger().debugging && v > mv {
-                    proc.args().push("-q")
+                    proc.args().push("-q");
+                    proc.logger()
+                        .println(Some(Verbosity::High), &format!("Args: {:#?}", proc.args()));
                 }
             }
         }
