@@ -52,8 +52,8 @@ mod tests {
 
     #[test]
     fn distro_from_invalid_string() {
-        if let Err(e) = Distro::try_from(String::from("some_rando_distro")) {
-            assert!(false, "")
+        if let Ok(_) = Distro::try_from(String::from("some_rando_distro")) {
+            assert!(false, "Created a `Distro` from an invalid string!")
         }
     }
 }

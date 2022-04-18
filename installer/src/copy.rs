@@ -1,3 +1,6 @@
+use dialoguer::Confirm;
+
+use crate::{cli::Verbosity, logger::Logger, proc::Run};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
@@ -5,123 +8,271 @@ use std::{
 
 #[derive(Debug)]
 pub enum CopyError {
-    InvalidFileName,
+    InvalidFileName { path: PathBuf },
+    FoundDirectory,
     Error(std::io::Error),
 }
 
 impl Display for CopyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CopyError::InvalidFileName => write!(
-                f,
-                "Path did not contain a file or directory name, and instead ended in '..'"
-            ),
+            CopyError::InvalidFileName { path } => {
+                write!(
+                    f,
+                    "{} is invalid. Is it relative, or malformed?",
+                    path.display()
+                )
+            }
+            CopyError::FoundDirectory => {
+                write!(
+                    f,
+                    "Encountered a directory & decided not to recursively copy \
+                        its' contents."
+                )
+            }
             CopyError::Error(e) => write!(f, "{}", e),
         }
     }
 }
 
-/// Copy file at `from` path to destination at `to` path.
-///
-/// ### Errors
-/// When the file found at `from` does not have a file name, and instead is
-/// something like '..', an appropriate error is returned. When there is an
-/// error during the copy operation, an appropriate error is returned.
-pub fn copy_file<'a>(from: &'a Path, to: &'a Path) -> std::io::Result<Result<PathBuf, CopyError>> {
-    if let Some(file_name) = from.file_name() {
-        if let Err(e) = std::fs::copy(
-            from,
-            format!("{}/{}", to.display(), file_name.to_string_lossy()),
-        ) {
-            return Ok(Err(CopyError::Error(e)));
-        }
-
-        // The good result.
-        return Ok(Ok(from.to_path_buf()));
-    }
-
-    // Bad but not the worst result, OS has not failed us, but we didn't
-    // encounter a valid path to copy.
-    Ok(Err(CopyError::InvalidFileName))
-}
-
-/// Iterates over a vec of tuples, and copies the file from 1st index to the
-/// path at the 2nd index.
-pub fn copy_each(
-    path_pairs: Vec<(&Path, &Path)>,
-) -> std::io::Result<Vec<Result<PathBuf, CopyError>>> {
-    let mut list = Vec::new();
-    for p in path_pairs {
-        match copy_file(p.0, p.1) {
-            Ok(r) => match r {
-                Ok(p) => list.push(Ok(p)),
-                Err(e) => list.push(Err(e)),
-            },
-            Err(e) => return Err(e),
-        }
-    }
-
-    Ok(list)
-}
-
 /// A helper struct for performing copy operations.
 pub struct CopyOperation {
-    /// Paths that will be copied to some destination (dest is specified when
-    /// `copy` is called.)
-    pub paths: Vec<PathBuf>,
-    /// Tracks status of each copy operation in a vec containing a tuple - left
-    /// side is the status, and right side is the original path.
-    pub results: Vec<Result<PathBuf, CopyError>>,
+    paths: Vec<PathBuf>,
+    dest: PathBuf,
+    logger: Logger,
 }
 
 impl CopyOperation {
-    /// Create a new `CopyOperation` with `paths`.
-    pub fn new(paths: Vec<PathBuf>) -> Self {
+    pub fn new(paths: &[PathBuf], dest: &Path, logger: &Logger) -> Self {
         Self {
-            paths,
-            results: Vec::new(),
+            paths: paths.to_vec(),
+            dest: dest.to_path_buf(),
+            logger: *logger,
         }
     }
 
-    /// Create a `CopyOperation` from a single `PathBuf`.
-    pub fn only(path: PathBuf) -> Self {
+    pub fn only(path: &Path, dest: &Path, logger: &Logger) -> Self {
         Self {
-            paths: vec![path],
-            results: Vec::new(),
+            paths: vec![path.to_path_buf()],
+            dest: dest.to_path_buf(),
+            logger: *logger,
         }
     }
+}
 
-    /// Recursively copies all files found in `self.paths`, walking
-    /// sub-directories as it goes, to `dest`.
-    pub fn copy_to(&mut self, dest: &Path) -> std::io::Result<()> {
+impl Run<Vec<PathBuf>, CopyError> for CopyOperation {
+    /// See `run_quietly` for documentation, this function operates the same,
+    /// but is littered with logging or interactivity.
+    fn run(&mut self) -> Result<Vec<PathBuf>, CopyError> {
+        let mut results = Vec::new();
         for pb in &self.paths {
-            match copy_file(&pb, dest) {
-                Ok(r) => match r {
-                    Ok(p) => self.results.push(Ok(p)),
-                    Err(e) => self.results.push(Err(e)),
-                },
-                Err(e) => return Err(e),
+            if let Some(fin) = pb.file_name() {
+                if pb.is_dir() {
+                    if let Ok(o) = Confirm::new()
+                        .with_prompt(format!("Recursing into {}. Continue?", pb.display()))
+                        .default(true)
+                        .interact_opt()
+                    {
+                        if let Some(_) = o {
+                            let mut cop = CopyOperation::only(pb, &self.dest, &self.logger);
+                            match cop.run_quietly() {
+                                Ok(mut r) => results.append(&mut r),
+                                Err(e) => return Err(e),
+                            }
+                        }
+                    }
+
+                    eprintln!("{}", CopyError::FoundDirectory);
+                    std::process::exit(1)
+                }
+
+                let mut dest_path = self.dest.clone();
+                if dest_path.is_dir() {
+                    dest_path = dest_path.join(fin);
+                }
+
+                match std::fs::copy(pb, &dest_path) {
+                    Ok(_) => {
+                        self.logger.println(
+                            Some(Verbosity::Medium),
+                            &format!("Copied {} to {}", pb.display(), &dest_path.display()),
+                        );
+                        results.push(dest_path.to_path_buf());
+                    }
+                    Err(e) => return Err(CopyError::Error(e)),
+                }
+            } else {
+                return Err(CopyError::InvalidFileName {
+                    path: pb.to_path_buf(),
+                });
             }
         }
 
-        Ok(())
+        Ok(results)
     }
-}
 
-impl From<Vec<&Path>> for CopyOperation {
-    fn from(vec: Vec<&Path>) -> Self {
-        Self {
-            paths: vec.iter().map(|p| p.into()).collect(),
-            results: Vec::new(),
+    fn run_quietly(&mut self) -> Result<Vec<PathBuf>, CopyError> {
+        // Store our results here - especially since this function can recurse.
+        // Mutable because it will change when we recurse.
+        let mut results = Vec::new();
+
+        // Go through all of the files that belong to our `CopyOperation`.
+        for pb in &self.paths {
+            // See `file_name` description for more info.
+            if let Some(fin) = pb.file_name() {
+                // Recurse when we've encountered a directory.
+                if pb.is_dir() {
+                    let mut cop = CopyOperation::only(&pb, &self.dest, &self.logger);
+                    match cop.run_quietly() {
+                        Ok(mut r) => results.append(&mut r),
+                        Err(e) => return Err(e),
+                    }
+                }
+
+                // When the destination is a directory, we have to append the
+                // filename to the end of the path.
+                let mut dest_path = self.dest.clone();
+                if dest_path.is_dir() {
+                    dest_path = dest_path.join(fin);
+                }
+
+                // Copy the file, throw errors.
+                match std::fs::copy(pb, &dest_path) {
+                    Ok(_) => results.push(dest_path.to_path_buf()),
+                    Err(e) => return Err(CopyError::Error(e)),
+                }
+            } else {
+                // Intentionally return, the design is to stop on failure, and
+                // let the user fix the problems, before we perform a clean run.
+                return Err(CopyError::InvalidFileName {
+                    path: pb.to_path_buf(),
+                });
+            }
         }
-    }
-}
 
-impl From<&Path> for CopyOperation {
-    fn from(path: &Path) -> Self {
-        CopyOperation::only(path.into())
+        Ok(results)
+    }
+
+    fn min_verbosity(&self) -> Option<Verbosity> {
+        Some(Verbosity::Low)
     }
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::CopyOperation;
+    use crate::{cli::Verbosity, logger::Logger, proc::Run};
+    use std::{fs::File, path::Path};
+
+    const FROM_PATH: &'static str = "tests/copy";
+
+    #[test]
+    fn copy_many() {
+        let logger = Logger::new(true, Some(Verbosity::High));
+
+        let from_dir = Path::new(FROM_PATH).join("copy_many");
+        let mut from_paths = vec![];
+
+        let dest_dir = from_dir.join("out");
+        let mut dest_paths = vec![];
+
+        if let Err(e) = std::fs::create_dir_all(&dest_dir) {
+            assert!(false, "{}", e)
+        }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Made dir: {}", &dest_dir.display()),
+        );
+
+        for fin in ["test0.txt", "test1.txt", "test2.txt"] {
+            let from_path = from_dir.join(fin);
+            if let Err(e) = File::create(&from_path) {
+                assert!(false, "{}", e)
+            }
+            logger.println(
+                Some(Verbosity::High),
+                &format!("Created file: {}", &from_path.display()),
+            );
+
+            from_paths.push(from_path);
+            dest_paths.push(dest_dir.join(fin));
+        }
+
+        let mut cop = CopyOperation::new(&from_paths, &dest_dir, &logger);
+        if let Err(e) = cop.run() {
+            assert!(false, "{}", e)
+        }
+
+        dest_paths.append(&mut from_paths);
+        for pb in dest_paths {
+            if let Err(e) = std::fs::remove_file(&pb) {
+                assert!(false, "{}", e)
+            }
+            logger.println(
+                Some(Verbosity::High),
+                &format!("Removed file: {}", &pb.display()),
+            );
+        }
+
+        for d in [dest_dir, from_dir] {
+            if let Err(e) = std::fs::remove_dir(&d) {
+                assert!(false, "{}", e)
+            }
+            logger.println(
+                Some(Verbosity::High),
+                &format!("Removed dir: {}", &d.display()),
+            );
+        }
+    }
+
+    #[test]
+    fn copy_only() {
+        let logger = Logger::new(true, Some(Verbosity::High));
+
+        let from_dir = Path::new(FROM_PATH).join("copy_only");
+        let dest_dir = from_dir.join("out");
+
+        if let Err(e) = std::fs::create_dir_all(&dest_dir) {
+            assert!(false, "{}", e)
+        }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Made dir: {}", &dest_dir.display()),
+        );
+
+        let file_name = "test.txt";
+        let from_path = from_dir.join(file_name);
+        if let Err(e) = File::create(&from_path) {
+            assert!(false, "{}", e)
+        }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Created file: {}", &from_path.display()),
+        );
+
+        let mut cop = CopyOperation::only(&from_path, &dest_dir, &logger);
+        if let Err(e) = cop.run() {
+            assert!(false, "{}", e)
+        }
+
+        for p in [from_path, dest_dir.join(file_name)] {
+            if let Err(e) = std::fs::remove_file(&p) {
+                assert!(false, "{}", e)
+            }
+            logger.println(
+                Some(Verbosity::High),
+                &format!("Removed file: {}", &p.display()),
+            );
+        }
+
+        for d in [dest_dir, from_dir] {
+            if let Err(e) = std::fs::remove_dir(&d) {
+                assert!(false, "{}", e)
+            }
+            logger.println(
+                Some(Verbosity::High),
+                &format!("Removed dir: {}", &d.display()),
+            );
+        }
+    }
+}

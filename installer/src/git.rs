@@ -1,7 +1,7 @@
 use crate::{
     cli::Verbosity,
     logger::Logger,
-    proc::{Process, Run},
+    proc::{self, Process, Run, RunProcess},
 };
 use chrono::Local;
 use std::{fmt::Display, path::Path, process::Output};
@@ -80,19 +80,33 @@ impl Display for GitError {
     }
 }
 
-impl Run<GitError> for Process {
-    fn run_quietly(&self, proc: &Process) -> Result<Output, GitError> {
-        if let Some(v) = proc.logger().verbosity {
-            if !proc.logger().debugging && v == Verbosity::Low {
-                proc.args().push("-q")
-            }
-        }
+impl Run<Output, GitError> for Process {
+    fn run(&mut self) -> Result<Output, GitError> {
+        panic!("Run me via `run_proc`, not `run")
+    }
 
-        self.run(proc)
+    fn run_quietly(&mut self) -> Result<Output, GitError> {
+        panic!("Run me via `run_proc_quietly`, not `run_quietly")
     }
 
     fn min_verbosity(&self) -> Option<Verbosity> {
         Some(Verbosity::Low)
+    }
+}
+
+impl RunProcess<Output, GitError> for Process {
+    /// Adds "-q" (quiet) flag to `Command` args when `Verbosity` is greater
+    /// than `Verbosity::Low`.
+    fn run_proc_quietly(proc: &mut Process) -> Result<Output, GitError> {
+        if let Some(v) = proc.logger().verbosity {
+            if let Some(mv) = proc.min_verbosity() {
+                if !proc.logger().debugging && v > mv {
+                    proc.args().push("-q")
+                }
+            }
+        }
+
+        Self::run_proc(proc)
     }
 }
 
@@ -105,13 +119,13 @@ impl Run<GitError> for Process {
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub fn add(path: &Path, logger: &Logger) -> Result<Output, GitError> {
-    let p = Process::new(
+    let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "add", "."],
         *logger,
     );
 
-    match p.run_quietly(&p) {
+    match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
             if status.success() {
@@ -138,7 +152,7 @@ pub fn add(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub fn commit(path: &Path, logger: &Logger) -> Result<Output, GitError> {
-    let p = Process::new(
+    let mut p = Process::new(
         "git",
         vec![
             "-C",
@@ -150,7 +164,7 @@ pub fn commit(path: &Path, logger: &Logger) -> Result<Output, GitError> {
         *logger,
     );
 
-    match p.run_quietly(&p) {
+    match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
             if status.success() {
@@ -176,13 +190,13 @@ pub fn commit(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub fn push(path: &Path, logger: &Logger) -> Result<Output, GitError> {
-    let p = Process::new(
+    let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "push"],
         *logger,
     );
 
-    match p.run_quietly(&p) {
+    match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
             if status.success() {
@@ -212,13 +226,13 @@ pub fn push(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub fn stash(path: &Path, logger: &Logger) -> Result<Output, GitError> {
-    let p = Process::new(
+    let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "stash", "push"],
         *logger,
     );
 
-    match p.run_quietly(&p) {
+    match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
             if status.success() {
@@ -248,13 +262,13 @@ pub fn stash(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub fn restore(path: &Path, logger: &Logger) -> Result<Output, GitError> {
-    let p = Process::new(
+    let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "stash", "pop"],
         *logger,
     );
 
-    match p.run_quietly(&p) {
+    match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
             if status.success() {
@@ -280,13 +294,13 @@ pub fn restore(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 pub fn pull(path: &Path, logger: &Logger) -> Result<Output, GitError> {
-    let p = Process::new(
+    let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "pull"],
         *logger,
     );
 
-    match p.run_quietly(&p) {
+    match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
             if status.success() {
@@ -317,7 +331,7 @@ pub fn pull(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
 fn _reset_hard(path: &Path, logger: &Logger) -> Result<Output, GitError> {
-    let p = Process::new(
+    let mut p = Process::new(
         "git",
         vec![
             "-C",
@@ -329,7 +343,7 @@ fn _reset_hard(path: &Path, logger: &Logger) -> Result<Output, GitError> {
         *logger,
     );
 
-    match p.run_quietly(&p) {
+    match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
             if status.success() {

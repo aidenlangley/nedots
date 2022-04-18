@@ -1,7 +1,7 @@
 use crate::cli::Verbosity;
 use std::io::Write;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct Logger {
     pub debugging: bool,
     pub verbosity: Option<Verbosity>,

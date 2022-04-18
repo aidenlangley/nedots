@@ -8,57 +8,48 @@ pub mod logger;
 pub mod proc;
 
 use clap::StructOpt;
-use cli::{Args, Command, Verbosity};
-use copy::CopyOperation;
+use cli::{Args, Command};
+use git::GitError;
 use logger::Logger;
 use nix::unistd::Uid;
 use settings::Settings;
-use std::path::PathBuf;
+use std::{path::PathBuf, process::Output};
 
-fn add(settings: Settings, logger: &Logger) {
-    if let Err(e) = crate::git::stash(&settings.path, logger) {
+fn run_git_op(result: Result<Output, GitError>, logger: &Logger) {
+    if let Err(e) = result {
         logger.println(None, &format!("{:#?}", e));
         eprintln!("{}", e);
         std::process::exit(1)
     }
-
-    if Uid::effective().is_root() {
-        let mut copy_op = CopyOperation::new(settings.root);
-        match copy_op.copy_to(&settings.path) {
-            Ok(_) => logger.println(Some(Verbosity::Medium), &format!("{:#?}", copy_op.results)),
-            Err(e) => {
-                logger.println(None, &format!("{:#?}", e));
-                eprintln!("{}", e);
-                std::process::exit(1)
-            }
-        }
-    }
-
-    let mut copy_op = CopyOperation::new(settings.user);
-    match copy_op.copy_to(&settings.path) {
-        Ok(_) => println!("{:#?}", copy_op.results),
-        Err(e) => {
-            logger.println(None, &format!("{:#?}", e));
-            eprintln!("{}", e);
-            std::process::exit(1)
-        }
-    }
-
-    for func in [
-        crate::git::add(&settings.path, logger),
-        crate::git::commit(&settings.path, logger),
-        crate::git::push(&settings.path, logger),
-        crate::git::restore(&settings.path, logger),
-    ] {
-        if let Err(e) = func {
-            logger.println(None, &format!("{:#?}", e));
-            eprintln!("{}", e);
-            std::process::exit(1)
-        }
-    }
 }
 
-fn update(settings: Settings, logger: &Logger, only: Option<Vec<String>>, force: bool) {}
+fn add(settings: &Settings, logger: &Logger) {
+    run_git_op(git::stash(&settings.path, logger), logger);
+
+    if Uid::effective().is_root() {
+        // Copy from &settings.root to &settings.path
+    }
+
+    // Copy from &settings.user to &settings.path
+
+    run_git_op(git::add(&settings.path, logger), logger);
+    run_git_op(git::commit(&settings.path, logger), logger);
+    run_git_op(git::push(&settings.path, logger), logger);
+    run_git_op(git::restore(&settings.path, logger), logger);
+}
+
+fn update(settings: &Settings, logger: &Logger) {
+    run_git_op(git::stash(&settings.path, logger), logger);
+    run_git_op(git::pull(&settings.path, logger), logger);
+
+    if Uid::effective().is_root() {
+        // Copy from `{&settings.path}/&{settings.root}` for each.
+    }
+
+    // Copy from `{&settings.path}/&{settings.user}` for each.
+
+    run_git_op(git::restore(&settings.path, logger), logger);
+}
 
 fn main() {
     let args = Args::parse();
@@ -90,8 +81,7 @@ fn main() {
     }
 
     match args.cmd {
-        Command::Add => add(settings, &logger),
-        Command::Update { only, force } => update(settings, &logger, only, force),
+        Command::Add => add(&settings, &logger),
         _ => todo!(),
     }
 }
