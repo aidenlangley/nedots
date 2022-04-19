@@ -10,24 +10,24 @@ pub mod proc;
 use clap::StructOpt;
 use cli::{Args, Command};
 use git::GitError;
-use logger::Logger;
+use logger::{Logger, Prints};
 use nix::unistd::Uid;
 use settings::Settings;
 use std::path::PathBuf;
 
-fn run_git_op(result: Result<String, GitError>, logger: &Logger) {
+fn run_git_op(result: Result<String, GitError>, logger: &Logger) -> Result<(), std::io::Error> {
     match result {
-        Ok(msg) => logger.println(None, &msg),
+        Ok(msg) => logger.write_line(None, &msg),
         Err(e) => {
-            logger.println(None, &format!("{:#?}", e));
-            eprintln!("{}", e);
+            logger.write_line(None, &format!("{:#?}", e))?;
+            logger.write_error(format!("{}", e))?;
             std::process::exit(1)
         }
     }
 }
 
-fn add(settings: &Settings, logger: &Logger) {
-    run_git_op(git::stash(&settings.path, logger), logger);
+fn add(push: bool, settings: &Settings, logger: &Logger) -> Result<(), std::io::Error> {
+    run_git_op(git::stash(&settings.path, logger), logger)?;
 
     if Uid::effective().is_root() {
         // Copy from &settings.root to &settings.path
@@ -35,43 +35,45 @@ fn add(settings: &Settings, logger: &Logger) {
 
     // Copy from &settings.user to &settings.path
 
-    run_git_op(git::add(&settings.path, logger), logger);
-    run_git_op(git::commit(&settings.path, logger), logger);
-    run_git_op(git::push(&settings.path, logger), logger);
-    run_git_op(git::restore(&settings.path, logger), logger);
+    run_git_op(git::add(&settings.path, logger), logger)?;
+    run_git_op(git::commit(&settings.path, logger), logger)?;
+    run_git_op(git::restore(&settings.path, logger), logger)?;
+
+    // When the user passes `-p/--push`...
+    if push {
+        run_git_op(git::push(&settings.path, logger), logger)?;
+    }
+
+    Ok(())
 }
 
-fn main() {
+fn main() -> Result<(), std::io::Error> {
     let args = Args::parse();
-    let debugging = args.debugging();
-    let verbosity = args.get_verbosity();
-    let logger = Logger::new(debugging, verbosity);
+    let logger = Logger::new(args.verbosity());
 
-    logger.println(None, &format!("Args: {:#?}", args));
-    if let Some(v) = verbosity {
-        logger.println(None, &format!("Verbosity: {:#?}", v));
-    }
+    logger.write_line(None, &format!("Args: {:#?}", args))?;
+    // logger.vprintln(None, &format!("Verbosity: {:#?}", logger.verbosity()));
 
     let mut settings = match Settings::read() {
         Ok(s) => {
-            logger.println(None, &format!("{:#?}", s));
+            logger.write_line(None, &format!("{:#?}", s))?;
             s
         }
         Err(e) => {
-            println!("{}", e);
+            logger.write_error(format!("{}", e))?;
             std::process::exit(1)
         }
     };
-    logger.println(None, &format!("{:#?}", settings));
+    logger.write_line(None, &format!("{:#?}", settings))?;
 
     // If user has passed us a path, replace `settings.path`.
     if let Some(p) = args.path {
         settings.path = PathBuf::from(p);
-        logger.println(None, &format!("{:#?}", settings.path));
+        logger.write_line(None, &format!("{:#?}", settings.path))?;
     }
 
     match args.cmd {
-        Command::Add => add(&settings, &logger),
+        Command::Add { push } => add(push, &settings, &logger),
         _ => todo!(),
     }
 }

@@ -1,6 +1,8 @@
+use crate::{
+    logger::{Logger, Prints, Verbosity},
+    proc::Run,
+};
 use dialoguer::Confirm;
-
-use crate::{cli::Verbosity, logger::Logger, proc::Run};
 use std::{
     fmt::Display,
     path::{Path, PathBuf},
@@ -93,7 +95,7 @@ impl Run<Vec<PathBuf>, CopyError> for CopyOperation {
 
                 match std::fs::copy(pb, &dest_path) {
                     Ok(_) => {
-                        self.logger.println(
+                        self.logger.write_line(
                             Some(Verbosity::Medium),
                             &format!("Copied {} to {}", pb.display(), &dest_path.display()),
                         );
@@ -161,14 +163,17 @@ impl Run<Vec<PathBuf>, CopyError> for CopyOperation {
 #[cfg(test)]
 mod tests {
     use super::CopyOperation;
-    use crate::{cli::Verbosity, logger::Logger, proc::Run};
+    use crate::{
+        logger::{Logger, Prints, Verbosity},
+        proc::Run,
+    };
     use std::{fs::File, path::Path};
 
     const FROM_DIR: &'static str = "copy";
 
     #[test]
     fn copy_many() {
-        let logger = Logger::new(true, Some(Verbosity::High));
+        let logger = Logger::new(Some(Verbosity::Debug));
 
         let from_dir = Path::new(crate::_TESTS_DIR)
             .join(FROM_DIR)
@@ -181,7 +186,7 @@ mod tests {
         if let Err(e) = std::fs::create_dir_all(&dest_dir) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Made dir: {}", &dest_dir.display()),
         );
@@ -191,7 +196,7 @@ mod tests {
             if let Err(e) = File::create(&from_path) {
                 assert!(false, "{}", e)
             }
-            logger.println(
+            logger.write_line(
                 Some(Verbosity::High),
                 &format!("Created file: {}", &from_path.display()),
             );
@@ -210,7 +215,7 @@ mod tests {
             if let Err(e) = std::fs::remove_file(&pb) {
                 assert!(false, "{}", e)
             }
-            logger.println(
+            logger.write_line(
                 Some(Verbosity::High),
                 &format!("Removed file: {}", &pb.display()),
             );
@@ -220,7 +225,7 @@ mod tests {
             if let Err(e) = std::fs::remove_dir(&d) {
                 assert!(false, "{}", e)
             }
-            logger.println(
+            logger.write_line(
                 Some(Verbosity::High),
                 &format!("Removed dir: {}", &d.display()),
             );
@@ -229,7 +234,7 @@ mod tests {
 
     #[test]
     fn copy_only() {
-        let logger = Logger::new(true, Some(Verbosity::High));
+        let logger = Logger::new(Some(Verbosity::Debug));
 
         let from_dir = Path::new(crate::_TESTS_DIR)
             .join(FROM_DIR)
@@ -239,7 +244,7 @@ mod tests {
         if let Err(e) = std::fs::create_dir_all(&dest_dir) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Made dir: {}", &dest_dir.display()),
         );
@@ -249,7 +254,7 @@ mod tests {
         if let Err(e) = File::create(&from_path) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Created file: {}", &from_path.display()),
         );
@@ -263,7 +268,7 @@ mod tests {
             if let Err(e) = std::fs::remove_file(&p) {
                 assert!(false, "{}", e)
             }
-            logger.println(
+            logger.write_line(
                 Some(Verbosity::High),
                 &format!("Removed file: {}", &p.display()),
             );
@@ -273,7 +278,7 @@ mod tests {
             if let Err(e) = std::fs::remove_dir(&d) {
                 assert!(false, "{}", e)
             }
-            logger.println(
+            logger.write_line(
                 Some(Verbosity::High),
                 &format!("Removed dir: {}", &d.display()),
             );

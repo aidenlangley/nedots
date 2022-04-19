@@ -1,14 +1,12 @@
+use crate::{install::Distro, logger::Verbosity};
 use clap::{Parser, Subcommand};
-use std::fmt::Display;
-
-use crate::install::Distro;
 
 #[derive(Debug, Parser)]
 #[clap(about = "Tool for installing & managing ne/any-dots.")]
 #[clap(version)]
 pub(super) struct Args {
-    #[clap(short, long, parse(from_occurrences))]
-    debug: usize,
+    #[clap(short, long)]
+    debug: bool,
 
     #[clap(short, long, parse(from_occurrences))]
     verbose: usize,
@@ -22,50 +20,16 @@ pub(super) struct Args {
 }
 
 impl Args {
-    pub fn debugging(&self) -> bool {
-        self.debug > 0
-    }
-
-    pub fn get_verbosity(&self) -> Option<Verbosity> {
-        match self.verbose {
-            0 => None,
-            1 => Some(Verbosity::Low),
-            2 => Some(Verbosity::Medium),
-            _ => Some(Verbosity::High),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-/// Determines the verbosity of the applications output to the terminal.
-pub enum Verbosity {
-    /// Low leads to the removal of quiet flags being passed to child processes.
-    Low = 1,
-    /// Medium leads to increased verbosity of child processes.
-    Medium = 2,
-    /// High leads to increased verbosity of this application in addition to the
-    /// above.
-    High = 3,
-}
-
-impl Display for Verbosity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Verbosity::Low => write!(
-                f,
-                "Low (leads to the removal of quiet flags being passed to \
-                    child processes.)"
-            ),
-            Verbosity::Medium => write!(
-                f,
-                "Medium (leads to increased verbosity of child processes where
-                    applicable, as well as the verbosity provided by Low.)"
-            ),
-            Verbosity::High => write!(
-                f,
-                "High (leads to increased verbosity of this application in \
-                    addition to the verbosity provided by Medium.)"
-            ),
+    pub fn verbosity(&self) -> Option<Verbosity> {
+        if self.debug {
+            Some(Verbosity::Debug)
+        } else {
+            match self.verbose {
+                0 => None,
+                1 => Some(Verbosity::Low),
+                2 => Some(Verbosity::Medium),
+                _ => Some(Verbosity::High),
+            }
         }
     }
 }
@@ -75,7 +39,11 @@ pub(super) enum Command {
     #[clap(about = "Add changes to remote by commiting & pushing local changes \
         to git repository. Conflicts are reported on, and it's expected that \
         you handle them manually.")]
-    Add,
+    Add {
+        #[clap(short, long)]
+        #[clap(help = "Push changes to remote.")]
+        push: bool,
+    },
 
     #[clap(about = "Update config files by pulling changes from remote & \
         applying them locally. If files have been modified more recently than \

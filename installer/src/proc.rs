@@ -1,16 +1,15 @@
+use crate::logger::{Logger, Prints, Verbosity};
 use std::process::Output;
-
-use crate::{cli::Verbosity, logger::Logger};
 
 #[derive(Debug, Clone)]
 pub struct Process {
     prog: String,
     args: Vec<String>,
-    logger: Logger,
+    logger: Option<Logger>,
 }
 
 impl Process {
-    pub fn new(prog: &str, args: Vec<&str>, logger: Logger) -> Self {
+    pub fn new(prog: &str, args: Vec<&str>, logger: Option<Logger>) -> Self {
         Self {
             prog: prog.to_string(),
             args: args.iter().map(|a| a.to_string()).collect(),
@@ -26,8 +25,8 @@ impl Process {
         self.args.iter().map(|a| a.as_str()).collect()
     }
 
-    pub fn logger(&self) -> &Logger {
-        &self.logger
+    pub fn logger(&self) -> Option<&Logger> {
+        self.logger.as_ref()
     }
 }
 
@@ -56,15 +55,17 @@ pub trait RunProcess<R, E>: Run<R, E> {
             .output()
         {
             Ok(o) => {
-                // Print the prog name and args when debugging or when
-                // `Verbosity::High`.
-                proc.logger().println(
-                    Some(Verbosity::High),
-                    &format!("{:#?}: {:#?}", proc.prog(), proc.args()),
-                );
+                if let Some(logger) = proc.logger() {
+                    // Print the prog name and args when debugging or when
+                    // `Verbosity::High`.
+                    logger.write_line(
+                        Some(Verbosity::High),
+                        &format!("{:#?}: {:#?}", proc.prog(), proc.args()),
+                    );
 
-                // Print the output of `stdout` when `Ok` and `Verbosity` is high enough.
-                proc.logger().write_buf(Some(Verbosity::Medium), &o.stdout);
+                    // Print the output of `stdout` when `Ok` and `Verbosity` is high enough.
+                    logger.write_line(Some(Verbosity::Medium), &o.stdout);
+                }
 
                 Ok(o)
             }

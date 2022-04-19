@@ -1,6 +1,5 @@
 use crate::{
-    cli::Verbosity,
-    logger::Logger,
+    logger::{Logger, Terminal, Verbosity},
     proc::{Process, Run, RunProcess},
 };
 use chrono::Local;
@@ -94,11 +93,9 @@ impl RunProcess<Output, GitError> for Process {
     /// Adds "-q" (quiet) flag to `Command` args when `Verbosity` is greater
     /// than `Verbosity::Low`.
     fn run_proc_quietly(proc: &mut Process) -> Result<Output, GitError> {
-        if let Some(v) = proc.logger().verbosity {
-            if let Some(mv) = proc.min_verbosity() {
-                if !proc.logger().debugging && v > mv {
-                    proc.args().push("-q");
-                }
+        if let Some(l) = proc.logger() {
+            if l.should_print(proc.min_verbosity()) {
+                proc.args().push("-q");
             }
         }
 
@@ -118,7 +115,7 @@ pub fn add(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "add", "."],
-        *logger,
+        Some(*logger),
     );
 
     match Process::run_proc_quietly(&mut p) {
@@ -158,7 +155,7 @@ pub fn commit(path: &Path, logger: &Logger) -> Result<String, GitError> {
             "-m",
             &format!("Latest ({})", Local::now()),
         ],
-        *logger,
+        Some(*logger),
     );
 
     match Process::run_proc_quietly(&mut p) {
@@ -190,7 +187,7 @@ pub fn push(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "push"],
-        *logger,
+        Some(*logger),
     );
 
     match Process::run_proc_quietly(&mut p) {
@@ -226,7 +223,7 @@ pub fn stash(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "stash", "push"],
-        *logger,
+        Some(*logger),
     );
 
     match Process::run_proc_quietly(&mut p) {
@@ -262,7 +259,7 @@ pub fn restore(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "stash", "pop"],
-        *logger,
+        Some(*logger),
     );
 
     match Process::run_proc_quietly(&mut p) {
@@ -294,7 +291,7 @@ pub fn pull(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "pull"],
-        *logger,
+        Some(*logger),
     );
 
     match Process::run_proc_quietly(&mut p) {
@@ -337,7 +334,7 @@ fn _reset_hard(path: &Path, logger: &Logger) -> Result<String, GitError> {
             "--hard",
             "HEAD^0",
         ],
-        *logger,
+        Some(*logger),
     );
 
     match Process::run_proc_quietly(&mut p) {
@@ -360,8 +357,7 @@ fn _reset_hard(path: &Path, logger: &Logger) -> Result<String, GitError> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        cli::Verbosity,
-        logger::Logger,
+        logger::{Logger, Prints, Verbosity},
         proc::{Process, Run},
     };
     use std::{
@@ -375,7 +371,7 @@ mod tests {
         if let Err(e) = File::create(&file_path) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Created file: {}", &file_path.display()),
         );
@@ -387,7 +383,7 @@ mod tests {
         if let Err(e) = std::fs::remove_file(path) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Removed file: {}", path.display()),
         );
@@ -397,21 +393,21 @@ mod tests {
         if let Err(e) = super::stash(test_dir, &logger) {
             assert!(false, "{}", e)
         }
-        logger.println(Some(Verbosity::High), &format!("Stashed working tree!"));
+        logger.write_line(Some(Verbosity::High), &format!("Stashed working tree!"));
     }
 
     fn git_restore(test_dir: &Path, logger: Logger) {
         if let Err(e) = super::restore(test_dir, &logger) {
             assert!(false, "{}", e)
         }
-        logger.println(Some(Verbosity::High), &format!("Restored working tree!"));
+        logger.write_line(Some(Verbosity::High), &format!("Restored working tree!"));
     }
 
     fn git_add(test_dir: &Path, logger: Logger) {
         if let Err(e) = super::add(test_dir, &logger) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Added files to `git` repo!"),
         );
@@ -421,7 +417,7 @@ mod tests {
         if let Err(e) = super::commit(test_dir, &logger) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Made commit to `git` repo!"),
         );
@@ -433,7 +429,7 @@ mod tests {
         if let Err(e) = super::_reset_hard(test_dir, &logger) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Reset `git` repo to initial state!"),
         );
@@ -441,12 +437,12 @@ mod tests {
 
     #[test]
     fn stash_add_commit_reset() {
-        let logger = Logger::new(true, Some(Verbosity::High));
+        let logger = Logger::new(Some(Verbosity::High));
         let mut test_dir = Path::new(crate::_TESTS_DIR).join("git");
 
         // Remove directory in case previous tests failed early.
         if let Ok(_) = std::fs::remove_dir_all(&test_dir) {
-            logger.println(
+            logger.write_line(
                 Some(Verbosity::High),
                 &format!("Removed dir: {}", &test_dir.display()),
             );
@@ -456,7 +452,7 @@ mod tests {
         if let Err(e) = std::fs::create_dir_all(&test_dir) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Made dir: {}", &test_dir.display()),
         );
@@ -471,13 +467,13 @@ mod tests {
         let mut p = Process::new(
             "git",
             vec!["-C", &test_dir.to_string_lossy().to_string(), "init"],
-            logger,
+            Some(logger),
         );
         match p.run() {
             Ok(o) => assert!(o.status.success(), "{}", o.status),
             Err(e) => assert!(false, "{}", e),
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Initialised new `git` repository!"),
         );
@@ -501,7 +497,7 @@ mod tests {
         if let Err(e) = std::fs::remove_dir_all(&test_dir) {
             assert!(false, "{}", e)
         }
-        logger.println(
+        logger.write_line(
             Some(Verbosity::High),
             &format!("Removed dir: {}", &test_dir.display()),
         );
