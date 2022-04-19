@@ -37,7 +37,9 @@ pub trait Run<R, E> {
 
     /// Pass a mutable reference to `&self`, and return `R`. We don't want to
     /// restrict what you can do with `&self`, we just want a good `Result`.
-    fn run_quietly(&mut self) -> Result<R, E>;
+    fn run_quietly(&mut self) -> Result<R, E> {
+        self.run()
+    }
 
     /// Implementor can return a `min_verbosity` that will determine when `run`
     /// is to give feedback to the user.
@@ -54,23 +56,22 @@ pub trait RunProcess<R, E>: Run<R, E> {
             .output()
         {
             Ok(o) => {
-                // Print the output from stdout pretty much all of the time.
-                proc.logger().write_buf(proc.min_verbosity(), &o.stdout);
-
-                // Print the prog name, and args when debugging, or when
+                // Print the prog name and args when debugging or when
                 // `Verbosity::High`.
                 proc.logger().println(
                     Some(Verbosity::High),
                     &format!("{:#?}: {:#?}", proc.prog(), proc.args()),
                 );
 
-                // Print the Output status when debugging or when `Verbosity::High`.
-                proc.logger()
-                    .println(Some(Verbosity::High), &format!("status: {:#?}", o.status));
+                // Print the output of `stdout` when `Ok` and `Verbosity` is high enough.
+                proc.logger().write_buf(Some(Verbosity::Medium), &o.stdout);
 
                 Ok(o)
             }
-            Err(_) => panic!("Failed to run `{}`! Is it installed?", proc.prog()),
+            Err(_) => {
+                eprint!("Failed to run `{}`! Is it installed?", proc.prog());
+                std::process::exit(1)
+            }
         }
     }
 

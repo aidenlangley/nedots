@@ -13,13 +13,16 @@ use git::GitError;
 use logger::Logger;
 use nix::unistd::Uid;
 use settings::Settings;
-use std::{path::PathBuf, process::Output};
+use std::path::PathBuf;
 
-fn run_git_op(result: Result<Output, GitError>, logger: &Logger) {
-    if let Err(e) = result {
-        logger.println(None, &format!("{:#?}", e));
-        eprintln!("{}", e);
-        std::process::exit(1)
+fn run_git_op(result: Result<String, GitError>, logger: &Logger) {
+    match result {
+        Ok(msg) => logger.println(None, &msg),
+        Err(e) => {
+            logger.println(None, &format!("{:#?}", e));
+            eprintln!("{}", e);
+            std::process::exit(1)
+        }
     }
 }
 
@@ -35,19 +38,6 @@ fn add(settings: &Settings, logger: &Logger) {
     run_git_op(git::add(&settings.path, logger), logger);
     run_git_op(git::commit(&settings.path, logger), logger);
     run_git_op(git::push(&settings.path, logger), logger);
-    run_git_op(git::restore(&settings.path, logger), logger);
-}
-
-fn update(settings: &Settings, logger: &Logger) {
-    run_git_op(git::stash(&settings.path, logger), logger);
-    run_git_op(git::pull(&settings.path, logger), logger);
-
-    if Uid::effective().is_root() {
-        // Copy from `{&settings.path}/&{settings.root}` for each.
-    }
-
-    // Copy from `{&settings.path}/&{settings.user}` for each.
-
     run_git_op(git::restore(&settings.path, logger), logger);
 }
 
@@ -85,6 +75,8 @@ fn main() {
         _ => todo!(),
     }
 }
+
+const _TESTS_DIR: &'static str = "tests";
 
 #[cfg(test)]
 mod tests {

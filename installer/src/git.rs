@@ -1,7 +1,7 @@
 use crate::{
     cli::Verbosity,
     logger::Logger,
-    proc::{self, Process, Run, RunProcess},
+    proc::{Process, Run, RunProcess},
 };
 use chrono::Local;
 use std::{fmt::Display, path::Path, process::Output};
@@ -82,11 +82,7 @@ impl Display for GitError {
 
 impl Run<Output, GitError> for Process {
     fn run(&mut self) -> Result<Output, GitError> {
-        panic!("Run me via `run_proc`, not `run")
-    }
-
-    fn run_quietly(&mut self) -> Result<Output, GitError> {
-        panic!("Run me via `run_proc_quietly`, not `run_quietly")
+        Process::run_proc(self)
     }
 
     fn min_verbosity(&self) -> Option<Verbosity> {
@@ -102,8 +98,6 @@ impl RunProcess<Output, GitError> for Process {
             if let Some(mv) = proc.min_verbosity() {
                 if !proc.logger().debugging && v > mv {
                     proc.args().push("-q");
-                    proc.logger()
-                        .println(Some(Verbosity::High), &format!("Args: {:#?}", proc.args()));
                 }
             }
         }
@@ -120,7 +114,7 @@ impl RunProcess<Output, GitError> for Process {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub fn add(path: &Path, logger: &Logger) -> Result<Output, GitError> {
+pub fn add(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "add", "."],
@@ -130,15 +124,16 @@ pub fn add(path: &Path, logger: &Logger) -> Result<Output, GitError> {
     match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
-            if status.success() {
+            if !status.success() {
                 if let Some(c) = status.code() {
                     match c {
+                        128 => return Ok("No changes".to_string()), // No changes
                         _ => return Err(GitError::AddFailure),
                     }
                 }
             }
 
-            Ok(o)
+            Ok(format!("`{}` successful!", p.prog()))
         }
         Err(e) => return Err(e),
     }
@@ -153,7 +148,7 @@ pub fn add(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub fn commit(path: &Path, logger: &Logger) -> Result<Output, GitError> {
+pub fn commit(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec![
@@ -169,7 +164,7 @@ pub fn commit(path: &Path, logger: &Logger) -> Result<Output, GitError> {
     match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
-            if status.success() {
+            if !status.success() {
                 if let Some(c) = status.code() {
                     match c {
                         _ => return Err(GitError::CommitFailure),
@@ -177,7 +172,7 @@ pub fn commit(path: &Path, logger: &Logger) -> Result<Output, GitError> {
                 }
             }
 
-            Ok(o)
+            Ok(format!("`{}` successful!", p.prog()))
         }
         Err(e) => return Err(e),
     }
@@ -191,7 +186,7 @@ pub fn commit(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub fn push(path: &Path, logger: &Logger) -> Result<Output, GitError> {
+pub fn push(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "push"],
@@ -201,7 +196,7 @@ pub fn push(path: &Path, logger: &Logger) -> Result<Output, GitError> {
     match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
-            if status.success() {
+            if !status.success() {
                 if let Some(c) = status.code() {
                     match c {
                         _ => return Err(GitError::PushFailure),
@@ -209,7 +204,7 @@ pub fn push(path: &Path, logger: &Logger) -> Result<Output, GitError> {
                 }
             }
 
-            Ok(o)
+            Ok(format!("`{}` successful!", p.prog()))
         }
         Err(e) => return Err(e),
     }
@@ -227,7 +222,7 @@ pub fn push(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub fn stash(path: &Path, logger: &Logger) -> Result<Output, GitError> {
+pub fn stash(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "stash", "push"],
@@ -245,7 +240,7 @@ pub fn stash(path: &Path, logger: &Logger) -> Result<Output, GitError> {
                 }
             }
 
-            Ok(o)
+            Ok(format!("`{}` successful!", p.prog()))
         }
         Err(e) => return Err(e),
     }
@@ -263,7 +258,7 @@ pub fn stash(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub fn restore(path: &Path, logger: &Logger) -> Result<Output, GitError> {
+pub fn restore(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "stash", "pop"],
@@ -273,7 +268,7 @@ pub fn restore(path: &Path, logger: &Logger) -> Result<Output, GitError> {
     match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
-            if status.success() {
+            if !status.success() {
                 if let Some(c) = status.code() {
                     match c {
                         _ => return Err(GitError::StashPopFailure),
@@ -281,7 +276,7 @@ pub fn restore(path: &Path, logger: &Logger) -> Result<Output, GitError> {
                 }
             }
 
-            Ok(o)
+            Ok(format!("`{}` successful!", p.prog()))
         }
         Err(e) => return Err(e),
     }
@@ -295,7 +290,7 @@ pub fn restore(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-pub fn pull(path: &Path, logger: &Logger) -> Result<Output, GitError> {
+pub fn pull(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec!["-C", &path.to_string_lossy().to_string(), "pull"],
@@ -305,7 +300,7 @@ pub fn pull(path: &Path, logger: &Logger) -> Result<Output, GitError> {
     match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
-            if status.success() {
+            if !status.success() {
                 if let Some(c) = status.code() {
                     match c {
                         _ => return Err(GitError::PullFailure),
@@ -313,7 +308,7 @@ pub fn pull(path: &Path, logger: &Logger) -> Result<Output, GitError> {
                 }
             }
 
-            Ok(o)
+            Ok(format!("`{}` successful!", p.prog()))
         }
         Err(e) => return Err(e),
     }
@@ -332,7 +327,7 @@ pub fn pull(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 ///
 /// ### Panics
 /// Panics when `std::io::stdout().write_all(buf)` fails to write to `stdout`.
-fn _reset_hard(path: &Path, logger: &Logger) -> Result<Output, GitError> {
+fn _reset_hard(path: &Path, logger: &Logger) -> Result<String, GitError> {
     let mut p = Process::new(
         "git",
         vec![
@@ -340,7 +335,7 @@ fn _reset_hard(path: &Path, logger: &Logger) -> Result<Output, GitError> {
             &path.to_string_lossy().to_string(),
             "reset",
             "--hard",
-            "HEAD^",
+            "HEAD^0",
         ],
         *logger,
     );
@@ -348,7 +343,7 @@ fn _reset_hard(path: &Path, logger: &Logger) -> Result<Output, GitError> {
     match Process::run_proc_quietly(&mut p) {
         Ok(o) => {
             let status = o.status;
-            if status.success() {
+            if !status.success() {
                 if let Some(c) = status.code() {
                     match c {
                         _ => return Err(GitError::_ResetFailure),
@@ -356,7 +351,7 @@ fn _reset_hard(path: &Path, logger: &Logger) -> Result<Output, GitError> {
                 }
             }
 
-            Ok(o)
+            Ok(format!("`{}` successful!", p.prog()))
         }
         Err(e) => return Err(e),
     }
@@ -364,82 +359,151 @@ fn _reset_hard(path: &Path, logger: &Logger) -> Result<Output, GitError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{cli::Verbosity, logger::Logger, settings::Settings};
-    use std::{fs::File, path::Path};
+    use crate::{
+        cli::Verbosity,
+        logger::Logger,
+        proc::{Process, Run},
+    };
+    use std::{
+        fs::File,
+        path::{Path, PathBuf},
+        vec,
+    };
 
-    fn git_stash(path: &Path, logger: &Logger) {
-        let git_stash = super::stash(path, &logger);
-        match git_stash {
-            Ok(o) => assert!(o.status.success()),
-            Err(e) => assert!(false, "{}", e),
+    fn make_file(test_dir: &Path, file_name: &str, logger: Logger) -> PathBuf {
+        let file_path = test_dir.join(file_name);
+        if let Err(e) = File::create(&file_path) {
+            assert!(false, "{}", e)
         }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Created file: {}", &file_path.display()),
+        );
+
+        file_path
     }
 
-    fn git_restore(path: &Path, logger: &Logger) {
-        let git_restore = super::restore(path, &logger);
-        match git_restore {
-            Ok(o) => assert!(o.status.success()),
-            Err(e) => assert!(false, "{}", e),
+    fn remove_file(path: &Path, logger: Logger) {
+        if let Err(e) = std::fs::remove_file(path) {
+            assert!(false, "{}", e)
         }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Removed file: {}", path.display()),
+        );
     }
 
-    fn git_add(path: &Path, logger: &Logger) {
-        let git_add = super::add(path, &logger);
-        match git_add {
-            Ok(o) => assert!(o.status.success(), "`git add` status: {}", o.status),
-            Err(e) => assert!(false, "{}", e),
+    fn git_stash(test_dir: &Path, logger: Logger) {
+        if let Err(e) = super::stash(test_dir, &logger) {
+            assert!(false, "{}", e)
         }
+        logger.println(Some(Verbosity::High), &format!("Stashed working tree!"));
     }
 
-    fn git_commit(path: &Path, logger: &Logger) {
-        let git_commit = super::commit(path, &logger);
-        match git_commit {
-            Ok(o) => assert!(o.status.success()),
-            Err(e) => assert!(false, "{}", e),
+    fn git_restore(test_dir: &Path, logger: Logger) {
+        if let Err(e) = super::restore(test_dir, &logger) {
+            assert!(false, "{}", e)
         }
+        logger.println(Some(Verbosity::High), &format!("Restored working tree!"));
     }
 
-    fn git_reset_hard(path: &Path, logger: &Logger) {
-        let git_revert = super::_reset_hard(path, &logger);
-        match git_revert {
-            Ok(o) => assert!(o.status.success()),
-            Err(e) => assert!(false, "{}", e),
+    fn git_add(test_dir: &Path, logger: Logger) {
+        if let Err(e) = super::add(test_dir, &logger) {
+            assert!(false, "{}", e)
         }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Added files to `git` repo!"),
+        );
+    }
+
+    fn git_commit(test_dir: &Path, logger: Logger) {
+        if let Err(e) = super::commit(test_dir, &logger) {
+            assert!(false, "{}", e)
+        }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Made commit to `git` repo!"),
+        );
+    }
+
+    // Notice the use of `git reset **hard**`. This is dangerous. See
+    // `git::operations::_reset_hard()` for more information.
+    fn git_reset(test_dir: &Path, logger: Logger) {
+        if let Err(e) = super::_reset_hard(test_dir, &logger) {
+            assert!(false, "{}", e)
+        }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Reset `git` repo to initial state!"),
+        );
     }
 
     #[test]
-    /// In a nut shell, writes a file, runs `git_add`, followed by `git_commit`,
-    /// and then rolls back. Stashes and restores working tree to avoid messing
-    /// with dev work.
-    ///
-    /// ### Asserts
-    /// Each & every git operation must pass, the creation, and subsequent
-    /// deletion of the file necessary for the operations to run, must also
-    /// pass and/or not panic.
-    ///
-    /// ### Panics
-    /// When the test fails to create necessary files for testing the `git`
-    /// operations.
-    fn all_ops() {
+    fn stash_add_commit_reset() {
         let logger = Logger::new(true, Some(Verbosity::High));
-        let settings = match Settings::read() {
-            Ok(s) => s,
+        let mut test_dir = Path::new(crate::_TESTS_DIR).join("git");
+
+        // Remove directory in case previous tests failed early.
+        if let Ok(_) = std::fs::remove_dir_all(&test_dir) {
+            logger.println(
+                Some(Verbosity::High),
+                &format!("Removed dir: {}", &test_dir.display()),
+            );
+        }
+
+        // Make a new directory that'll be a `git` repository for testing shortly.
+        if let Err(e) = std::fs::create_dir_all(&test_dir) {
+            assert!(false, "{}", e)
+        }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Made dir: {}", &test_dir.display()),
+        );
+
+        // Get the full path to the new `git` repository.
+        test_dir = match test_dir.canonicalize() {
+            Ok(r) => r,
             Err(e) => panic!("{}", e),
         };
 
-        git_stash(&settings.path, &logger);
+        // `git init` the new directory.
+        let mut p = Process::new(
+            "git",
+            vec!["-C", &test_dir.to_string_lossy().to_string(), "init"],
+            logger,
+        );
+        match p.run() {
+            Ok(o) => assert!(o.status.success(), "{}", o.status),
+            Err(e) => assert!(false, "{}", e),
+        }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Initialised new `git` repository!"),
+        );
 
-        // Since we've stashed our work, our working tree would be empty (clean)
-        // so failing here is okay, since we'd fail at `git_add` anyway.
-        File::create("git_commit_test.txt").expect("Failed to create file!");
+        // Make a test file for `git` to add & commit.
+        let _commit_file = make_file(&test_dir, "committing_me.txt", logger);
+        git_add(&test_dir, logger);
+        git_commit(&test_dir, logger);
 
-        git_add(&settings.path, &logger);
-        git_commit(&settings.path, &logger);
+        // Make a file so that the tree is dirty and `git stash` can succeed.
+        let dirty_file = make_file(&test_dir, "making_tree_dirty.txt", logger);
+        git_add(&test_dir, logger);
+        git_stash(&test_dir, logger);
+        git_restore(&test_dir, logger);
 
-        // Notice the use of `git reset **hard**`. This is dangerous. See
-        // `git::operations::_reset_hard()` for more information.
-        git_reset_hard(&settings.path, &logger);
+        // Remove the file that was restored & test.
+        remove_file(&dirty_file, logger);
+        git_reset(&test_dir, logger);
 
-        git_restore(&settings.path, &logger);
+        // Tidy up after ourselves.
+        if let Err(e) = std::fs::remove_dir_all(&test_dir) {
+            assert!(false, "{}", e)
+        }
+        logger.println(
+            Some(Verbosity::High),
+            &format!("Removed dir: {}", &test_dir.display()),
+        );
     }
 }

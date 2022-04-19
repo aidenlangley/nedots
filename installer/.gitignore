@@ -1,3 +1,4 @@
 target/
 tests/copy/**/*
+tests/git/
 nedots.json

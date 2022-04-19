@@ -164,13 +164,15 @@ mod tests {
     use crate::{cli::Verbosity, logger::Logger, proc::Run};
     use std::{fs::File, path::Path};
 
-    const FROM_PATH: &'static str = "tests/copy";
+    const FROM_DIR: &'static str = "copy";
 
     #[test]
     fn copy_many() {
         let logger = Logger::new(true, Some(Verbosity::High));
 
-        let from_dir = Path::new(FROM_PATH).join("copy_many");
+        let from_dir = Path::new(crate::_TESTS_DIR)
+            .join(FROM_DIR)
+            .join("copy_many");
         let mut from_paths = vec![];
 
         let dest_dir = from_dir.join("out");
@@ -229,7 +231,9 @@ mod tests {
     fn copy_only() {
         let logger = Logger::new(true, Some(Verbosity::High));
 
-        let from_dir = Path::new(FROM_PATH).join("copy_only");
+        let from_dir = Path::new(crate::_TESTS_DIR)
+            .join(FROM_DIR)
+            .join("copy_only");
         let dest_dir = from_dir.join("out");
 
         if let Err(e) = std::fs::create_dir_all(&dest_dir) {
