@@ -1,28 +1,52 @@
-use crate::{install::Distro, logger::Verbosity};
+use crate::{
+    config::Config,
+    output::{
+        logger::Logger,
+        verbosity::{Verbose, Verbosity},
+        TerminalLogger,
+    },
+};
 use clap::{Parser, Subcommand};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Parser)]
-#[clap(about = "Tool for installing & managing ne/any-dots.")]
+#[clap(about = "A tool for installing & managing ne/any-dots.")]
 #[clap(version)]
-pub(super) struct Args {
+pub(crate) struct Args {
     #[clap(short, long)]
+    /// Enable the highest level of verbosity for assistance when debugging.
     debug: bool,
 
     #[clap(short, long, parse(from_occurrences))]
+    /// Enables incremental increases in the level of verbosity, e.g. -vvv
+    /// for most verbose.
     verbose: usize,
 
     #[clap(short, long)]
-    #[clap(help = "Path of nedots data directory")]
-    pub(super) path: Option<String>,
+    /// Silences output.
+    quiet: bool,
+
+    #[clap(short, long)]
+    /// Instead of sourcing the path from `nedots.json`, it can be passed
+    /// as an argument.
+    path: Option<String>,
 
     #[clap(subcommand)]
-    pub(super) cmd: Command,
+    /// Operation to perform.
+    pub(crate) cmd: Command,
 }
 
 impl Args {
-    pub fn verbosity(&self) -> Option<Verbosity> {
+    /// Get the `Verbosity` to be used throughout the lifetime of the
+    /// program. If `-d/--debug` was passed as an arg, enable the highest
+    /// level of `Verbosity`, conversely, disable `Verbosity` when `-q/--quiet`
+    /// is passed - otherwise, increase in increments that are determined by
+    /// `-v/--verbose`.
+    pub(crate) fn verbosity(&self) -> Option<Verbosity> {
         if self.debug {
             Some(Verbosity::Debug)
+        } else if self.quiet {
+            None
         } else {
             match self.verbose {
                 0 => None,
@@ -32,42 +56,119 @@ impl Args {
             }
         }
     }
+
+    /// Get the `nedots` repository path if it was passed as an argument,
+    /// & canonicalize it.
+    pub(crate) fn path(&self) -> Result<Option<PathBuf>, std::io::Error> {
+        if let Some(s) = self.path.as_ref() {
+            return Ok(Some(Path::new(s).canonicalize()?));
+        }
+
+        Ok(None)
+    }
 }
 
 #[derive(Debug, Subcommand)]
-pub(super) enum Command {
-    #[clap(about = "Add changes to remote by commiting & pushing local changes \
-        to git repository. Conflicts are reported on, and it's expected that \
-        you handle them manually.")]
-    Add {
+pub(crate) enum Command {
+    /// Add changes to remote by commiting & pushing local changes to git
+    /// repository. Conflicts are reported on, and it's expected that
+    /// you handle them manually.
+    AddChanges {
         #[clap(short, long)]
-        #[clap(help = "Push changes to remote.")]
+        /// Push changes to remote.
         push: bool,
+
+        #[clap(short, long)]
+        #[clap(default_value_t = String::from("origin"))]
+        /// Push to this remote instead of origin.
+        remote: String,
+
+        #[clap(short, long)]
+        /// Use this branch instead of default in .gitconfig.
+        branch: Option<String>,
     },
 
-    #[clap(about = "Update config files by pulling changes from remote & \
-        applying them locally. If files have been modified more recently than \
-        the latest remote changes, this operation will stop. Overwrite any \
-        local changes with --force/-f.")]
-    Update {
+    /// Update config files by pulling changes from remote & applying
+    /// them locally.
+    ///
+    /// This application is not as smart as `git`, and won't try
+    /// to be - `git pull` performs a `git fetch`, and makes a decision on
+    /// the strategy it will use to integrate upstream changes, `fast forward`
+    /// or merge via `rebase` or with a `merge commit`. We'll simply just
+    /// `fast forward` since it is the safest option and the least dirty.
+    ///
+    /// If files have been modified more recently than the latest remote
+    /// changes, this operation will stop. Overwrite any local changes with
+    /// --force/-f.
+    UpdateLocal {
         #[clap(short, long)]
-        #[clap(help = "Only update the folders specified.")]
+        #[clap(default_value_t = String::from("origin"))]
+        /// Pull from this remote instead of origin.
+        remote: String,
+
+        #[clap(short, long)]
+        /// Use this branch instead of default in .gitconfig.
+        branch: Option<String>,
+
+        #[clap(short, long)]
+        /// Only update the folders specified.
         only: Option<Vec<String>>,
 
-        #[clap(long, parse(try_from_str))]
-        #[clap(help = "Overwrite local files.")]
+        #[clap(long)]
+        /// Overwrite local files.
         force: bool,
     },
 
-    #[clap(about = "Install packages, configs & perform misc. install \
-        operations.")]
-    Install {
-        #[clap(short, long)]
-        distro: Option<Distro>,
-
+    /// Installs packages from distributions' package manager, Flatpak, and
+    /// performs other misc. install operations for supported distributions.
+    /// Fedora will configure & install rpmfusion related repositories.
+    InstallPackages {
         #[clap(short = 'y', long = "assumeyes")]
+        /// Translates to `sudo dnf install -y`.
         assume_yes: bool,
-        // #[clap(subcommand)]
-        // cmd: install::InstallCommand,
     },
+}
+
+/// Prints `msg` and exits with `code`.
+fn exit(msg: &str, code: usize) -> ! {
+    crate::output::error(msg);
+    std::process::exit(code.try_into().unwrap())
+}
+
+/// Parse args & run operations.
+pub(super) fn run() -> Result<(), std::io::Error> {
+    let args = Args::parse();
+    let logger = TerminalLogger::new().with_verbosity(args.verbosity());
+
+    logger.log(&format!("Args: {:#?}", args))?;
+    logger.log(&format!("Verbosity: {:#?}", logger.verbosity()))?;
+
+    let config = match Config::new() {
+        Ok(s) => {
+            logger.log(format!("Settings: {:#?}", s).as_str())?;
+            s
+        }
+        Err(e) => exit(format!("{}", e).as_str(), 1),
+    };
+
+    todo!()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Args;
+    use crate::config::Config;
+    use clap::IntoApp;
+
+    #[test]
+    fn verify() {
+        Args::command().debug_assert()
+    }
+
+    #[test]
+    fn read_settings() {
+        if let Err(e) = Config::new() {
+            assert!(false, "{}", e);
+        }
+    }
 }

@@ -1,0 +1,38 @@
+{
+    "path": "/not_here/.nedots",
+    "root": [],
+    "user": [
+        "/not_here/.nedots",
+        "/not_here/.nedots/installer/tests"
+    ],
+    "packages": {
+        "core": {
+            "fedora": [
+                "pkg0",
+                "pkg1"
+            ]
+        },
+        "x11": {
+            "fedora": [
+                "pkg0",
+                "pkg1"
+            ]
+        },
+        "wayland": {
+            "fedora": [
+                "pkg0",
+                "pkg1"
+            ]
+        },
+        "flatpak": [
+            {
+                "remote": "some_remote",
+                "url": "https://a.url",
+                "packages": [
+                    "com.org.App0",
+                    "com.org.App1"
+                ]
+            }
+        ]
+    }
+}
