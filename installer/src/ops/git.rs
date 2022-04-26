@@ -37,6 +37,7 @@ pub struct GitOperation {
 }
 
 impl GitOperation {
+    /// Construct a new `GitOperation`.
     pub fn new(remote: Option<String>) -> Self {
         Self {
             path: None,
@@ -44,6 +45,7 @@ impl GitOperation {
         }
     }
 
+    /// Assign `path` and open `Repository`.
     pub fn at_path(mut self, path: &Path) -> Result<Self, GitError> {
         self.path = Some(path.to_path_buf());
 
@@ -53,6 +55,7 @@ impl GitOperation {
         Ok(self)
     }
 
+    /// Get the `path` of git `Repository`.
     fn path(&self) -> Result<&Path, GitError> {
         self.path
             .as_ref()
@@ -60,10 +63,13 @@ impl GitOperation {
             .ok_or(GitError::NoPath)
     }
 
+    /// Borrow the `Repository` - takes a mutable borrow of self so that we can
+    /// open it if necessary.
     fn repo(&mut self) -> Result<&Repository, GitError> {
         Ok(self.repo.get_or_insert(Repository::open(self.path()?)?))
     }
 
+    /// Adds latest changes from a dirty tree.
     pub fn add_changes(mut self) -> Result<(Self, Oid), GitError> {
         let mut index = self.repo()?.index()?;
         index.add_all(["*"].iter(), IndexAddOption::DEFAULT, None)?;
@@ -71,6 +77,7 @@ impl GitOperation {
         Ok((self, index.write_tree()?))
     }
 
+    /// Commit changes - `tree_id` comes from `add_changes`.
     pub fn commit(mut self, tree_id: Oid) -> Result<(Self, Oid), GitError> {
         let repo = self.repo()?;
         let sig = repo.signature()?;
@@ -86,6 +93,7 @@ impl GitOperation {
         Ok((self, oid))
     }
 
+    /// Push changes to `remote`.
     pub fn push(&mut self, remote: &str) -> Result<(), GitError> {
         let repo = self.repo()?;
         repo.find_remote(remote)?.push::<&str>(&[], None)?;
@@ -93,6 +101,7 @@ impl GitOperation {
         Ok(())
     }
 
+    /// Fetch changes from `remote` for `branch`.
     pub fn fetch(&mut self, branch: &str, remote: &str) -> Result<AnnotatedCommit, GitError> {
         let repo = self.repo()?;
         repo.find_remote(remote)?.fetch(&[branch], None, None)?;
@@ -156,6 +165,8 @@ mod tests {
     use std::{fs::File, path::Path};
 
     #[test]
+    /// Expects to fail because a `GitOperation` was made without a `path` to a
+    /// `Repository`.
     fn no_path() {
         if let Err(e) = GitOperation::new(Some("origin".to_string())).path() {
             assert_eq!(e.to_string(), "No path to a `git` repository was provided.")
@@ -163,6 +174,8 @@ mod tests {
     }
 
     #[test]
+    /// Expects to fail because a `GitOperation` was made with a `path` to a
+    /// directory that isn't a git `Repository`.
     fn bad_path() {
         if let Err(e) = GitOperation::new(Some("origin".to_string())).at_path(Path::new(_TESTS_DIR))
         {
@@ -173,16 +186,17 @@ mod tests {
     }
 
     #[test]
+    /// Sets up a `Repository`, performs an `add_changes`, then commits manually
+    /// (without leaning on `GitOperation`) to make the initial commit.
+    ///
+    /// Once the initial commit is made, dirty the tree again via `add_changes`,
+    /// the runs `commit` via `GitOperation` to test its impl.
+    ///
+    /// Then asserts the commit message is as expected, then cleans up by
+    /// removing the git directory.
     fn add_commit() {
         let path = Path::new(_TESTS_DIR).join("git");
-
-        // Tidy up previous tests,
-        if let Err(_) = std::fs::remove_dir_all(&path) {
-            // Don't mind if the folder isn't there.
-        }
-
-        // init will make directories.
-        Repository::init(&path).expect("Failed to init repository!");
+        Repository::init(&path).expect("Failed to init repository!"); // init will make directories.
 
         // Make GitOperation & open repo.
         let go = GitOperation::new(Some("origin".to_string()))
@@ -225,10 +239,17 @@ mod tests {
             .expect("Failed to get repo!")
             .find_commit(oid0)
             .expect("Failed to get README commit!");
-        assert_eq!(commit.message().unwrap(), format!("Latest {}", dt))
+        assert_eq!(commit.message().unwrap(), format!("Latest {}", dt));
+
+        // Tidy up.
+        std::fs::remove_dir_all(&path).expect("Failed to remove git dir!");
     }
 
-    #[test]
+    // #[test]
+    /// Tests a `fetch` - don't expect `fetch` to pull in any changes, but we
+    /// expect that this won't fail.
+    ///
+    /// TODO: auth.
     fn fetch() {
         let mut cb = RemoteCallbacks::new();
         cb.credentials(|_user, username_from_url, _allowed_types| todo!());
