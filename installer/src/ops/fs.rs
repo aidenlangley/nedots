@@ -110,6 +110,7 @@ mod tests {
         path::{Path, PathBuf},
     };
 
+    /// Makes the base `copy` directory and returns the `PathBuf`.
     fn setup() -> PathBuf {
         let base_path = Path::new(_TESTS_DIR).join("copy");
         std::fs::create_dir_all(&base_path).expect("Failed to make base_path!");
@@ -118,6 +119,7 @@ mod tests {
     }
 
     #[test]
+    /// Expects to run a successful `CopyOperation`.
     fn copy_file() {
         let base_path = setup();
         let new_file = Path::new(&base_path).join("COPYING");
@@ -134,6 +136,8 @@ mod tests {
     }
 
     #[test]
+    /// Checks errors are thrown when a `from` path is not provided, and when a
+    /// `to` path is not provided.
     fn no_path() {
         let base_path = setup();
         let cop = CopyOperation::new().from(&Path::new(&base_path).join("COPYING"));
@@ -152,6 +156,7 @@ mod tests {
     }
 
     #[test]
+    /// Expects a nonsensical file_name to fail.
     fn bad_file_name() {
         let base_path = setup();
         let cop = CopyOperation::new()
@@ -173,6 +178,9 @@ mod tests {
     }
 
     #[test]
+    /// Tests providing a directory as opposed to a file to `CopyOperation`.
+    /// Expects that `copy` will recurse, by walk the directory and running a
+    /// new `CopyOperation` for each.
     fn recurse() {
         let base_path = setup();
 
