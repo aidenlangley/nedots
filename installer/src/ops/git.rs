@@ -27,7 +27,7 @@ pub enum GitError {
 }
 
 /// A `GitOperation` is constructed and passed a `path`, then a `Repository` is
-/// opened and referenced through its' lifetime.
+/// opened and referenced throughout its' lifetime.
 pub struct GitOperation {
     /// Path of git repository.
     path: Option<PathBuf>,
