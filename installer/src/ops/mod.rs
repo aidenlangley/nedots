@@ -1,71 +1,79 @@
-mod fs;
-mod git;
+pub(crate) mod fs;
+pub(crate) mod git;
+pub(crate) mod op;
 
-use self::git::GitOperation;
+use self::{
+    git::GitOp,
+    op::{Operation, OperationError},
+};
 use crate::output::TerminalLogger;
-use std::collections::HashMap;
-use thiserror::Error;
-
-#[derive(Debug, Error)]
-enum OperationError {
-    #[error(transparent)]
-    Git(#[from] git::GitError),
-
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-}
-
-trait Operate {
-    /// Run the `Operation`.
-    fn run(&self) -> Result<usize, OperationError>;
-
-    /// Return this exit code so the program can terminate correctly.
-    fn exit_code(&self) -> usize;
-}
-
-/// `Operation` will store information pertaining to the program runtime.
-pub struct Operation {
-    /// Id of the `Operation`.
-    id: usize,
-
-    /// `Logger` to report errors and/or progress.
-    logger: TerminalLogger,
-
-    /// `Vec` of `Result` for this `Operation`, a &str will be used to identify
-    /// the key-value pair, e.g. `git_add` or `copy_{path}`.
-    results: HashMap<&'static str, Result<(), OperationError>>,
-}
+use fs::CopyOp;
+use std::path::{Path, PathBuf};
 
 /// Adds local changes to the `git` repository.
-pub struct AddChanges {
-    /// The `Operation` that holds the `id`, `logger` and a `Vec` of `Result`.
-    op: Option<Operation>,
+pub(crate) struct AddChanges<'remote> {
+    pub(crate) parent_op: Operation<TerminalLogger>,
 
     /// The `GitOperation` responsible for `add`, `commit` & `push`.
-    git_op: Option<GitOperation>,
+    pub(crate) git_op: Option<GitOp<'remote>>,
 
     /// The `CopyOperation`'s that need to run to copy local files to local
     /// repository.
-    copy_ops: Option<Vec<()>>, // TODO: `Vec` of `CopyOperation`.
+    pub(crate) copy_ops: Vec<CopyOp>,
+}
+
+impl<'remote> AddChanges<'remote> {
+    pub(crate) fn new(op: Operation<TerminalLogger>) -> Self {
+        Self {
+            parent_op: op,
+            git_op: None,
+            copy_ops: Vec::new(),
+        }
+    }
+
+    pub(crate) fn to(mut self, to: PathBuf) -> Result<Self, OperationError> {
+        if let Some(_) = &self.git_op {
+            self.git_op = Some(self.git_op.unwrap().at_path(&to)?);
+        } else {
+            self.git_op = Some(GitOp::new().at_path(&to)?);
+        }
+        Ok(self)
+    }
+
+    pub(crate) fn copy_these(mut self, paths: Vec<PathBuf>) -> Result<Self, OperationError> {
+        for p in &paths {
+            self.copy_ops.push(
+                CopyOp::new()
+                    .from(&Path::new(env!("HOME")).join(&p))
+                    .to(&Path::new(self.git_op.as_ref().unwrap().path()?).join(&p)),
+            );
+        }
+
+        Ok(self)
+    }
+
+    pub(crate) fn to_remote(mut self, remote: &'remote str) -> Result<Self, OperationError> {
+        if let Some(_) = &self.git_op {
+            self.git_op = Some(self.git_op.unwrap().with_remote(remote));
+        } else {
+            self.git_op = Some(GitOp::new().with_remote(remote));
+        }
+
+        Ok(self)
+    }
 }
 
 /// Updates local files after pulling latest changes from remote.
-pub struct UpdateLocal {
-    /// The `Operation` that holds the `id`, `logger` and a `Vec` of `Result`.
-    op: Operation,
-
+struct UpdateLocal<'remote> {
     /// The `GitOperation` responsible for `fetch` & `fast-forward`.
-    git_op: Option<GitOperation>,
+    git_op: Option<GitOp<'remote>>,
 
     /// The `CopyOperation`'s that need to be run after updating from remote.
     copy_ops: Option<Vec<()>>, // TODO: `Vec` of `CopyOperation`.
 }
 
 /// Installs a list of packages.
-pub struct InstallPackages {
-    /// The `Operation` that holds the `id`, `logger` and a `Vec` of `Result`.
-    op: Operation,
-
+struct InstallPackages {
     /// `InstallOperation` that will install a list of packages.
     install_op: Option<()>,
 }

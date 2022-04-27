@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-/// Errors thrown during a `CopyOperation`.
-pub enum CopyError {
+/// Errors thrown during a `CopyOp`.
+pub(crate) enum CopyError {
     #[error("No path to copy `from` provided.")]
     /// Need a path to copy data `from`.
     NoFromPath,
@@ -23,17 +23,17 @@ pub enum CopyError {
 
 #[derive(Debug)]
 /// Copies a single file.
-struct CopyOperation {
+pub(crate) struct CopyOp {
     /// Copy this file.
-    from: Option<PathBuf>,
+    pub(crate) from: Option<PathBuf>,
 
     /// Copy `from` file to this destination.
-    to: Option<PathBuf>,
+    pub(crate) to: Option<PathBuf>,
 }
 
-impl CopyOperation {
-    /// Construct a new `CopyOperation`.
-    fn new() -> Self {
+impl CopyOp {
+    /// Construct a new `CopyOp`.
+    pub(crate) fn new() -> Self {
         Self {
             from: None,
             to: None,
@@ -41,19 +41,19 @@ impl CopyOperation {
     }
 
     /// Assign `from`.
-    fn from(mut self, path: &Path) -> Self {
+    pub(crate) fn from(mut self, path: &Path) -> Self {
         self.from = Some(path.to_path_buf());
         self
     }
 
     /// Assign `to`.
-    fn to(mut self, path: &Path) -> Self {
+    pub(crate) fn to(mut self, path: &Path) -> Self {
         self.to = Some(path.to_path_buf());
         self
     }
 
     /// Do the copy.
-    fn copy(&self) -> Result<(), CopyError> {
+    pub(crate) fn copy(&self) -> Result<(), CopyError> {
         let from = match &self.from {
             Some(f) => {
                 // Check the `from` path is a file and not '..' or something odd.
@@ -82,7 +82,7 @@ impl CopyOperation {
         // of subdirectories, I am not multithreaded and don't intend to be.
         if from.is_dir() {
             for e in std::fs::read_dir(from)? {
-                let cop = CopyOperation::new().from(&e?.path()).to(&to);
+                let cop = CopyOp::new().from(&e?.path()).to(&to);
                 if let Err(e) = cop.copy() {
                     return Err(e);
                 }
@@ -103,7 +103,7 @@ impl CopyOperation {
 
 #[cfg(test)]
 mod tests {
-    use super::CopyOperation;
+    use super::CopyOp;
     use crate::_TESTS_DIR;
     use std::{
         fs::File,
@@ -119,14 +119,14 @@ mod tests {
     }
 
     #[test]
-    /// Expects to run a successful `CopyOperation`.
+    /// Expects to run a successful `CopyOp`.
     fn copy_file() {
         let base_path = setup();
         let new_file = Path::new(&base_path).join("COPYING");
         File::create(&new_file).expect("Failed to create new_file!");
         let dest = Path::new(&base_path).join("COPIED");
 
-        if let Err(e) = CopyOperation::new().from(&new_file).to(&dest).copy() {
+        if let Err(e) = CopyOp::new().from(&new_file).to(&dest).copy() {
             assert!(false, "{}", e)
         }
 
@@ -140,14 +140,14 @@ mod tests {
     /// `to` path is not provided.
     fn no_path() {
         let base_path = setup();
-        let cop = CopyOperation::new().from(&Path::new(&base_path).join("COPYING"));
+        let cop = CopyOp::new().from(&Path::new(&base_path).join("COPYING"));
         if let Err(e) = cop.copy() {
             assert_eq!(e.to_string(), "No path to copy `to` provided.")
         } else {
             assert!(false, "Hm? {:#?}", cop)
         }
 
-        let cop = CopyOperation::new().to(&Path::new(&base_path).join("COPIED"));
+        let cop = CopyOp::new().to(&Path::new(&base_path).join("COPIED"));
         if let Err(e) = cop.copy() {
             assert_eq!(e.to_string(), "No path to copy `from` provided.")
         } else {
@@ -159,7 +159,7 @@ mod tests {
     /// Expects a nonsensical file_name to fail.
     fn bad_file_name() {
         let base_path = setup();
-        let cop = CopyOperation::new()
+        let cop = CopyOp::new()
             .from(&Path::new(&base_path).join(".."))
             .to(&Path::new(&base_path).join(".."));
         if let Err(e) = cop.copy() {
@@ -178,9 +178,9 @@ mod tests {
     }
 
     #[test]
-    /// Tests providing a directory as opposed to a file to `CopyOperation`.
+    /// Tests providing a directory as opposed to a file to `CopyOp`.
     /// Expects that `copy` will recurse, by walk the directory and running a
-    /// new `CopyOperation` for each.
+    /// new `CopyOp` for each.
     fn recurse() {
         let base_path = setup();
 
@@ -197,7 +197,7 @@ mod tests {
             File::create(&p).expect(&format!("Failed to create {}", p.display()));
         }
 
-        if let Err(e) = CopyOperation::new()
+        if let Err(e) = CopyOp::new()
             .from(&recurse_dir)
             .to(&recurse_dest_dir)
             .copy()

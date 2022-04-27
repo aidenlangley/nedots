@@ -1,8 +1,7 @@
-pub mod output;
-
 mod cli;
 mod config;
 mod ops;
+mod output;
 
 fn main() -> Result<(), std::io::Error> {
     cli::run()

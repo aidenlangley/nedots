@@ -1,5 +1,9 @@
 use crate::{
     config::Config,
+    ops::{
+        op::{Operate, OperationError},
+        AddChanges,
+    },
     output::{
         logger::Logger,
         verbosity::{Verbose, Verbosity},
@@ -7,6 +11,7 @@ use crate::{
     },
 };
 use clap::{Parser, Subcommand};
+use indicatif::ProgressBar;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Parser)]
@@ -127,6 +132,46 @@ pub(crate) enum Command {
         /// Translates to `sudo dnf install -y`.
         assume_yes: bool,
     },
+}
+
+impl Operate for AddChanges<'_> {
+    fn operate(&self) -> Result<usize, OperationError> {
+        let bar =
+            ProgressBar::new(self.copy_ops.len().try_into().unwrap()).with_prefix("Copying...");
+        for op in &self.copy_ops {
+            bar.println(format!(
+                "{} -> {}",
+                op.from.as_ref().unwrap().display(),
+                op.to.as_ref().unwrap().display()
+            ));
+            op.copy()?;
+            bar.inc(1);
+        }
+
+        Ok(0)
+    }
+
+    fn exit_code(&self) -> usize {
+        if let Err(e) = self.operate() {
+            match e {
+                OperationError::Git(g) => match g {
+                    crate::ops::git::GitError::NoPath => return 1,
+                    crate::ops::git::GitError::NoRepo => return 1,
+                    crate::ops::git::GitError::PushRejected => return 1,
+                    crate::ops::git::GitError::Git2(_) => return 1,
+                    crate::ops::git::GitError::Unknown => return 1,
+                },
+                OperationError::Copy(c) => match c {
+                    crate::ops::fs::CopyError::NoFromPath => return 1,
+                    crate::ops::fs::CopyError::NoToPath => return 1,
+                    crate::ops::fs::CopyError::InvalidFileName { path: _ } => return 1,
+                    crate::ops::fs::CopyError::IoError(_) => return 1,
+                },
+            }
+        }
+
+        0
+    }
 }
 
 /// Prints `msg` and exits with `code`.
