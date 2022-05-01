@@ -1,13 +1,14 @@
 [Unit]
-After=polybar.target
-Description=blueman, bluetooth management
+Description=blueman-applet
 Documentation=https://wiki.archlinux.org/title/Blueman
-PartOf=polybar.target
-Requisite=polybar.target
+
+PartOf=polybar-dp0.service
+Wants=bspwm.target
 
 [Service]
 ExecStart=/usr/bin/blueman-applet
+Restart=on-failure
 StandardError=journal
 
 [Install]
-WantedBy=polybar.target
+WantedBy=bspwm.target

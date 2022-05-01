@@ -1,5 +1,5 @@
-function upgrade --description 'upgrade rpm, flatpak & firmware'
-    sudo dnf upgrade -y && flatpak update -y; fwupdmgr update -y;
+function upgrade --description 'refresh package manager then upgrade packages, flatpaks & firmware'
+    sudo zypper refresh; sudo zypper dup -y; sudo flatpak update -y; sudo fwupdmgr update -y;
 end
 
 # Supports cancel

@@ -1,0 +1,7 @@
+[Unit]
+Description=xorg/x11
+Documentation=https://wiki.archlinux.org/title/Xorg
+
+After=graphical-session-pre.target
+BindsTo=graphical-session.target
+Wants=graphical-session-pre.target

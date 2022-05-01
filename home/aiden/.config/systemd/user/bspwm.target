@@ -1,0 +1,9 @@
+[Unit]
+Description=bspwm
+Documentation=man:systemd.special(7)
+
+BindsTo=xorg.target
+PartOf=xorg.target
+
+[Install]
+WantedBy=xorg.target

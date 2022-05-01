@@ -1,0 +1,15 @@
+[Unit]
+Description=ulauncher
+Documentation=https://ulauncher.io/
+
+After=xorg.target
+Wants=xorg.target
+PartOf=xorg.target
+
+[Service]
+ExecStart=env GDK_BACKEND=x11 /usr/bin/ulauncher --hide-window
+Restart=on-failure
+StandardError=journal
+
+[Install]
+WantedBy=xorg.target

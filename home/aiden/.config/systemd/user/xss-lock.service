@@ -1,0 +1,16 @@
+[Unit]
+Description=xss-lock
+Documentation=man:xss-lock(1)
+
+After=xorg.target
+Wants=xorg.target
+PartOf=xorg.target
+
+[Service]
+Environment=LOCKER=%h/.local/bin/i3lock
+ExecStart=/usr/bin/xss-lock -l $LOCKER
+Restart=on-failure
+StandardError=journal
+
+[Install]
+WantedBy=xorg.target

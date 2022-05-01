@@ -1,9 +1,11 @@
 [Default Applications]
 application/pdf=firefox.desktop
-image/png=feh.desktop
-image/jpg=feh.desktop
 image/jpeg=feh.desktop
-x-scheme-handler/http=firefox.desktop
-x-scheme-handler/https=firefox.desktop
+image/jpg=feh.desktop
+image/png=feh.desktop
 text/html=firefox.desktop
 text/plain=code.desktop
+x-scheme-handler/http=firefox.desktop
+x-scheme-handler/https=firefox.desktop
+x-scheme-handler/mailto=firefox.desktop
+x-scheme-handler/webcal=firefox.desktop

@@ -1,13 +1,16 @@
 [Unit]
-After=bspwm-session.target
-Description=sxhkd, simple X hotkey daemon
+Description=sxhkd
 Documentation=man:sxhkd(1)
-PartOf=bspwm-session.target
-Requisite=bspwm-session.target
+
+After=bspwm.target
+BindsTo=bspwm.target
+ReloadPropagatedFrom=bspwm.target
 
 [Service]
-ExecStart=/usr/bin/sxhkd
+ExecReload=/usr/bin/pkill -USR1 -x sxhkd ; /usr/bin/notify-send 'sxhkd' 'Reload successful.' -u low -i terminal
+ExecStart=/usr/bin/sh -c /usr/bin/sxhkd
+ExecStop=/usr/bin/bspc quit
 StandardError=journal
 
 [Install]
-WantedBy=bspwm-session.target
+WantedBy=bspwm.target

@@ -1,20 +1,15 @@
 #! /usr/bin/env fish
 
 function bootstrap
-    start_systemd_session
     config_windows
     config_desktops
     config_wm
     config_rules
-end
 
-function start_systemd_session
-    # Import environment variables & start bspwm systemd service.
-    # sxhkd & other programs, such as lxpolkit, are listening in for the
-    # activation of bspwm-session and then starting up themselves.
-    systemctl --user import-environment
-    systemctl --user start xorg-session.target
-    systemctl --user start bspwm-session.target
+    # Kick off the other programs - systemd service files start most things.
+    systemctl --user start bspwm.target
+
+    run_hacks
 end
 
 function config_windows
@@ -25,71 +20,72 @@ function config_windows
     bspc config window_gap                  4
 
     # See desktop_rules for additional split_ratio config. We set to 0.69
-    # initially because usually the first desktop we're interacting with is II.
+    # initially because usually the first desktop we're interacting with is 1.
     bspc config split_ratio                 0.69
     bspc config focus_follows_pointer       true
+    bspc config single_monocle              true
     bspc config borderless_monocle          true
-    bspc config gapless_monocle             false
+    bspc config gapless_monocle             true
+    bspc config removal_adjustment          true
 
     bspc config normal_border_color         '#3c3836'
     bspc config active_border_color         '#3c3836'
     bspc config focused_border_color        '#665c54'
     bspc config presel_feedback_color       '#fbf1c7'
 
-    bspc config remove_unplugged_monitors   true
-    bspc config remove_disabled_monitors    true
-    bspc config merge_overlapping_monitors  true
+    # Settings related to focus
+    bspc config swallow_first_click         true
 end
 
 function config_desktops
-    if test (hostname) = 'aiden-desktop-fedora'
-        bspc monitor HDMI-A-0 -d        1
-        bspc monitor DisplayPort-0 -d   2 3 4 5 6
-    else if test (hostname) = 'aiden-xps-13-fedora'
-        bspc monitor eDP-1 -d           1 2 3 4 5 6
-    end
+    bspc config remove_unplugged_monitors   true
+    bspc config remove_disabled_monitors    true
+
+    bspc monitor DisplayPort-0 -d 1 2 3 4 7 8
+    bspc monitor HDMI-A-0 -d 5 6
 
     # Subscribes to desktop events & does things.
     $HOME/.config/bspwm/desktop_rules &
 end
 
 function config_wm
-    if test (hostname) = 'aiden-desktop-fedora'
-        # Rearranging monitors to ensure they're the way we want things. They
-        # are typically arranged in order by default, but we're just making sure
-        # here.
-        bspc wm -O HDMI-A-0 DisplayPort-0
-    end
+    # Rearranging monitors to ensure they're the way we want things. They
+    # are typically arranged in order by default, but we're just making sure
+    # here.
+    bspc wm -O DisplayPort-0 HDMI-A-0
 end
 
 function config_rules
-    # Move to mahi.
-    bspc rule -a 'Google-chrome'    desktop='^5'    follow=on
+    # Media desktop
+    bspc rule -a 'Spotify' desktop='6'
+
+    # Chrome desktop
+    bspc rule -a 'Google-chrome' desktop='7' follow=on center=on border=off
 
     # Gaming...
     ## Launchers
-    bspc rule -a 'Lutris'           desktop='^6'
-    bspc rule -a 'battle.net.exe'   desktop='^6'
-    bspc rule -a 'Steam'            desktop='^6'
+    bspc rule -a 'Lutris' desktop='8' follow=on center=on
+    bspc rule -a 'Battle.net.exe' desktop='8' follow=on center=on
+    bspc rule -a 'Steam' desktop='8' follow=on center=on
 
     ## Games
-    bspc rule -a 'Slay the Spire'       desktop='^6'    follow=on
-    bspc rule -a 'Bloons TD 6'          desktop='^6'    follow=on
-    bspc rule -a 'sc2_x64.exe'          desktop='^6'    follow=on
-    bspc rule -a 'Paradox Launcher'     desktop='^6'    follow=on
+    #
 
-    ## Steam via Proton
-    bspc rule -a 'steam_app_960090'     desktop='^6'    follow=on   state=floating  # Synthetik?
-    bspc rule -a 'steam_app_1127500'    desktop='^6'    follow=on                   # Mini Motorways
-    bspc rule -a 'steam_app_1092790'    desktop='^6'    follow=on   state=floating  # Inscryption
-
-    bspc rule -a '1Password'        state=floating
-    bspc rule -a 'flameshot'        state=floating
-    bspc rule -a 'Peek'             state=floating  border=off
-    bspc rule -a 'Ulauncher'        state=floating  border=off
+    # Everything else
+    bspc rule -a 'Flameshot' state=floating sticky=on center=on
+    bspc rule -a 'Ulauncher' state=floating sticky=on border=off
+    bspc rule -a 'Nemo' state=floating center=on
+    bspc rule -a 'Qalculate-gtk' flate=floating center=on
+    bspc rule -a 'YaST2' flate=floating center=on
+    bspc rule -a 'XTerm' flate=floating center=on
 
     # https://github.com/baskerville/bspwm/tree/master/examples/external_rules
     bspc config external_rules_command $HOME/.config/bspwm/external_rules
+end
+
+function run_hacks
+    # JetBrains & Java hack - they don't recognise bspwm as a window manager.
+    wmname LG3D &
 end
 
 bootstrap

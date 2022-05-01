@@ -1,9 +1,7 @@
-Xautolock.corners:  ++++
-Xautolock.killer:   systemctl suspend
-Xautolock.locker:   /home/aiden/.local/bin/i3lock
-Xautolock.notifier: /usr/bin/dunstify 'xautolock' 'Locking session shortly...' -i system -u low
-Xautolock.notify:   30
-Xautolock.time:     3
+Xautolock.corners:  ----
+Xautolock.locker:   $HOME/.local/bin/i3lock
+Xautolock.time:     1
+Xautolock.noclose:  true
 Xcursor.size:       16
 Xcursor.theme:      Adwaita
 Xft.antialias:      1

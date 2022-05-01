@@ -1,0 +1,14 @@
+[Unit]
+Description=polybar hdmia0
+Documentation=man:polybar(1)
+
+After=bspwm.target
+PartOf=bspwm.target
+
+[Service]
+ExecStart=/usr/bin/polybar hdmia0 -r
+Restart=always
+StandardError=journal
+
+[Install]
+WantedBy=bspwm.target

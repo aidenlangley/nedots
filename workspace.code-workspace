@@ -7,9 +7,6 @@
 			"path": "/home/aiden/.config/alacritty"
 		},
 		{
-			"path": "/home/aiden/.config/bottom"
-		},
-		{
 			"path": "/home/aiden/.config/bspwm"
 		},
 		{
@@ -28,6 +25,9 @@
 			"path": "/home/aiden/.config/htop"
 		},
 		{
+			"path": "/home/aiden/.config/nitrogen"
+		},
+		{
 			"path": "/home/aiden/.config/picom"
 		},
 		{
@@ -35,9 +35,6 @@
 		},
 		{
 			"path": "/home/aiden/.config/qt5ct"
-		},
-		{
-			"path": "/home/aiden/.config/ranger"
 		},
 		{
 			"path": "/home/aiden/.config/spotify-tui"

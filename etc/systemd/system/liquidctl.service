@@ -1,11 +1,13 @@
 [Unit]
-Description=liquidctl, AIO controller
+Description=LiquidCTL, AIO Controller
 
 [Service]
+ExecStart=/usr/bin/liquidctl --match 'NZXT Kraken X' initialize
+ExecStart=/usr/bin/liquidctl --match 'NZXT Kraken X' set fan speed  20 30  30 50  34 80  40 90  50 100
+ExecStart=/usr/bin/liquidctl --match 'NZXT Kraken X' set pump speed 100
+Restart=on-failure
+RestartSec=60
 Type=oneshot
-ExecStart=liquidctl initialize all
-ExecStart=liquidctl set pump speed 100
-ExecStart=liquidctl set fan speed  20 30  30 50  34 80  40 90  50 100
 
 [Install]
 WantedBy=default.target

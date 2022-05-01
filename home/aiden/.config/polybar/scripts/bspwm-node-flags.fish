@@ -18,7 +18,7 @@ bspc subscribe node | while read -a msg
 
         # If we've matched the string 'true' above, $flags will not be empty.
         if string length -q -- $flags
-            set output ' '
+            set output
 
             for flag in $flags
                 # The name is the first character before the ':'.
@@ -26,7 +26,7 @@ bspc subscribe node | while read -a msg
                 set output "$output$name"
             end
 
-            echo $output
+            echo $output ''
         else
             # When we've got nothing, we want to clear the output.
             echo ''

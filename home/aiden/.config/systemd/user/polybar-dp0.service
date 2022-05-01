@@ -1,0 +1,16 @@
+[Unit]
+Description=polybar dp0
+Documentation=man:polybar(1)
+
+After=bspwm.target
+PartOf=bspwm.target
+ReloadPropagatedFrom=bspwm.target
+
+[Service]
+ExecReload=/usr/bin/pkill -USR1 polybar ; /usr/bin/notify-send 'polybar' 'Reload successful.' -u low -i terminal
+ExecStart=/usr/bin/polybar dp0 -r
+Restart=always
+StandardError=journal
+
+[Install]
+WantedBy=bspwm.target

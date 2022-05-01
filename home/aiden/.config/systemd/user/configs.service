@@ -1,0 +1,23 @@
+[Unit]
+Description=miscellaneous oneshot configs for xorg (mouse accel, nitrogen, xrdb, etc.)
+
+After=xorg.target
+Wants=xorg.target
+PartOf=xorg.target
+
+[Service]
+Environment=\
+MOUSE='Logitech G502 HERO Gaming Mouse' \
+MOUSE_ACCEL="'libinput Accel Profile Enabled' 0, 1" \
+DISPLAY_TIMEOUT='60 0'
+
+ExecStart=/usr/bin/nitrogen --restore
+ExecStart=/usr/bin/xset s $DISPLAY_TIMEOUT
+ExecStart=/usr/bin/xrdb -merge %h/.Xresources
+ExecStart=/usr/bin/xinput set-prop ${MOUSE} $MOUSE_ACCEL
+ExecStart=/usr/bin/xsetroot -cursor_name left_ptr
+StandardError=journal
+Type=oneshot
+
+[Install]
+WantedBy=xorg.target

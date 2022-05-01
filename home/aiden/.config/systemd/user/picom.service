@@ -1,13 +1,15 @@
 [Unit]
-After=xorg-session.target
 Description=picom, X compositor
 Documentation=man:picom(1)
-PartOf=xorg-session.target
-Requisite=xorg-session.target
+
+After=xorg.target
+Wants=xorg.target
+PartOf=xorg.target
 
 [Service]
 ExecStart=/usr/bin/picom
+Restart=on-failure
 StandardError=journal
 
 [Install]
-WantedBy=xorg-session.target
+WantedBy=xorg.target
